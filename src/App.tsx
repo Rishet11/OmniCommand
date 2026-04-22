@@ -153,11 +153,11 @@ omx extract audio from video.mp4
 omx resize photo.png to 800px`} />
 
             <DocCard title="Batch Processing" code={
-  `# Native wildcard support
-omx compress *.png to 80%
+  `# Using native bash loops for batch scaling
+for f in *.png; do omx compress "$f" to 80%; done
 
-# Safe preview 
-omx compress *.mp4 to 50% --dry-run`} />
+# Safe preview in a loop
+for f in *.mp4; do omx compress "$f" to 50% --dry-run; done`} />
           </div>
         </section>
 

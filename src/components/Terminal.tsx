@@ -170,13 +170,8 @@ export function Terminal() {
         if (cmd.includes('video.mp4')) {
           await simulateProgress('Compressing video.mp4...', 'Output saved to: video_conv.mp4');
         } else if (cmd.includes('--dry-run')) {
-          addLine(`  Would process 8 files:
-  footage.mp4       (2.1GB) → footage_conv.mp4       (~1.0GB)
-  interview.mp4     (845MB) → interview_conv.mp4     (~422MB)
-  ...
-  Total: ~14.2GB → ~7.1GB
-
-  Run without --dry-run to proceed.`);
+          addLine(`Dry Run mode.
+Would execute: ffmpeg -n -i video.mp4 -c:v libx264 -preset fast -crf 28 video_compress.mp4`);
           setIsProcessing(false);
         } else {
           addLine('Output saved to: file_conv.ext');

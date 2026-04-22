@@ -12,14 +12,24 @@ export async function processImage(inputFile: string, targetFormat: string, opti
     const format = targetFormat.toLowerCase().replace('.', '');
     const outputPath = path.join(dir, `${name}_${options.actionType || 'conv'}.${format}`);
 
+    if (fs.existsSync(outputPath) && !options.overwrite) {
+        throw new Error(`Output file ${outputPath} already exists. Use --overwrite to bypass.`);
+    }
+
+    if (options.dryRun) {
+        throw new Error(`Dry Run mode.\nWould execute: sharp(${inputFile}).toFile(${outputPath}) [Format: ${format}]`);
+    }
+
     const image = sharp(inputFile);
 
     if (options.actionType === 'compress') {
         const target = options.compressTarget.toLowerCase();
         if (target.endsWith('%')) {
            options.quality = 50; // Simple simulation of generic 50% compress
+           options.pngCompression = 9;
         } else if (target.endsWith('mb') || target.endsWith('kb')) {
            options.quality = 60; // Simulation of absolute target size
+           options.pngCompression = 8;
         } else if (target.endsWith('px')) {
            options.width = parseInt(target.replace('px', ''));
         }
@@ -42,7 +52,12 @@ export async function processImage(inputFile: string, targetFormat: string, opti
                 await image.jpeg({ quality: options.quality ? parseInt(options.quality) : 80 }).toFile(outputPath);
                 break;
             case 'png':
-                await image.png().toFile(outputPath);
+                const pngOpts: any = {};
+                if (options.pngCompression) {
+                    pngOpts.compressionLevel = options.pngCompression;
+                    pngOpts.palette = true;
+                }
+                await image.png(pngOpts).toFile(outputPath);
                 break;
             case 'webp':
                 await image.webp({ quality: options.quality ? parseInt(options.quality) : 80 }).toFile(outputPath);

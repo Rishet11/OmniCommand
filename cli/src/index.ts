@@ -34,11 +34,14 @@ program
 function capitalize(str: string) { return str.charAt(0).toUpperCase() + str.slice(1); }
 
 async function executeEngine(inputFile: string, actionType: string, options: any) {
-    if (!options.quiet) {
+    if (!options.quiet && !options.json) {
         console.log(chalk.gray(`\nAnalyzing ${inputFile}...`));
     }
 
-    const spinner = ora(`${capitalize(actionType)}ing ${inputFile}...`).start();
+    const spinner = ora({
+        text: `${capitalize(actionType)}ing ${inputFile}...`,
+        isSilent: options.json || options.quiet
+    }).start();
 
     try {
         const ext = path.extname(inputFile).toLowerCase();
@@ -66,12 +69,37 @@ async function executeEngine(inputFile: string, actionType: string, options: any
         }
 
         spinner.succeed(chalk.green(`Output saved to: ${outputPath}`));
+        
+        if (options.json) {
+            console.log(JSON.stringify({ success: true, inputFile, outputPath, action: actionType }, null, 2));
+        }
     } catch (error: any) {
         spinner.fail(chalk.red(`${capitalize(actionType)} failed`));
-        console.error(chalk.red(`\n${error.message}\n`));
+        if (options.json) {
+            console.log(JSON.stringify({ success: false, error: error.message }, null, 2));
+        } else {
+            console.error(chalk.red(`\n${error.message}\n`));
+        }
         process.exit(1);
     }
 }
+
+// --- EXTRACT COMMAND ---
+program
+  .command('extract <trackType> <separator> <inputFile>')
+  .description('Extract audio/subs from video')
+  .action(async (trackType, separator, inputFile, options, command) => {
+    if (separator.toLowerCase() !== 'from') {
+        console.error(chalk.red(`\n✗ Invalid syntax. Use: omx extract <type> from <file>\n  Example: omx extract audio from video.mp4\n`));
+        process.exit(1);
+    }
+    validateNodeVersion();
+    const globalOpts = command.parent.opts();
+    
+    // Default audio extraction to mp3 (this is seamlessly passed down to processVideo's targetFormat logic)
+    const targetFormat = trackType.toLowerCase() === 'audio' ? 'mp3' : 'mp4';
+    await executeEngine(inputFile, 'extract', { ...globalOpts, ...options, targetFormat });
+  });
 
 // --- CONVERT COMMAND ---
 program
@@ -116,6 +144,21 @@ program
     await executeEngine(inputFile, 'trim', { ...globalOpts, ...options, trimStart: startTime, trimEnd: endTime });
   });
 
+// --- RESIZE COMMAND ---
+program
+  .command('resize <inputFile> <separator> <targetSize>')
+  .description('Resize an image')
+  .action(async (inputFile, separator, targetSize, options, command) => {
+    if (separator.toLowerCase() !== 'to') {
+        console.error(chalk.red(`\n✗ Invalid syntax. Use: omx resize <file> to <targetSize>\n  Example: omx resize photo.png to 800px\n`));
+        process.exit(1);
+    }
+    validateNodeVersion();
+    const globalOpts = command.parent.opts();
+    // Pass as compress target, image engine natively handles px
+    await executeEngine(inputFile, 'compress', { ...globalOpts, ...options, compressTarget: targetSize });
+  });
+
 // --- DOCTOR COMMAND ---
 program
   .command('doctor')
@@ -152,7 +195,7 @@ function validateNodeVersion(logSuccess = false) {
     }
 
     if (logSuccess) {
-        console.log(`✅ ${chalk.bold('Node.js')}  (v${major}.${minor}, >=20.3.0 requirement met)`);
+        console.log(`✅ ${chalk.bold('node')}     (v${major}.${minor}, >=20.3.0 requirement met)`);
     }
 }
 

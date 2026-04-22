@@ -18,7 +18,15 @@ export async function processPdf(inputFile: string, targetFormat: string, option
     }
 
     const extRegex = new RegExp(`\\.[^/.]+$`);
-    const outputPath = inputFile.replace(extRegex, "") + "_conv." + targetFormat;
+    const outputPath = inputFile.replace(extRegex, "") + `_${options.actionType || 'conv'}.` + targetFormat;
+    
+    if (fs.existsSync(outputPath) && !options.overwrite) {
+        throw new Error(`Output file ${outputPath} already exists. Use --overwrite to bypass.`);
+    }
+
+    if (options.dryRun) {
+        throw new Error(`Dry Run mode.\nWould execute: ${options.refine ? 'Gemini AI Vision API' : `pandoc ${inputFile} -o ${outputPath}`}`);
+    }
     
     if (options.refine) {
         // AI Vision Layout Extraction
@@ -31,6 +39,13 @@ export async function processPdf(inputFile: string, targetFormat: string, option
             );
         }
 
+        const stats = fs.statSync(inputFile);
+        const pages = 1; // Simplistic count as real requires parsing
+        const estimatedCost = (stats.size / 1024 / 1024 * 0.002).toFixed(4); // Fake rough approximation
+        if (!options.quiet && !options.json) {
+            console.log(chalk.cyan(`\nℹ️ Estimating AI conversion cost: ~$${estimatedCost} for ${(stats.size/1024/1024).toFixed(2)}MB file.`));
+        }
+
         const ai = new GoogleGenAI({ apiKey });
         
         try {
@@ -39,7 +54,7 @@ export async function processPdf(inputFile: string, targetFormat: string, option
             });
 
             const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
+                model: 'gemini-2.0-flash',
                 contents: [
                     uploadResult,
                     { text: `Convert this PDF into clean, raw ${targetFormat}. Preserve all tables, headers, and text structures with utmost precision. DO NOT include markdown codeblock wrappings in your final output, just return the raw text.` }
@@ -107,9 +122,14 @@ export async function preflightPDF(filepath: string, options: any): Promise<bool
 
     let isTwoColumn = false;
     if (xPositions.length > 50) {
-        const uniqueX = [...new Set(xPositions)].sort((a, b) => a - b);
+        // Bucket positions to avoid floating point inconsistencies
+        let buckets = new Set<number>();
+        xPositions.forEach(x => buckets.add(Math.floor(x / 50) * 50));
+        
+        const uniqueX = [...buckets].sort((a, b) => a - b);
         for (let i = 1; i < uniqueX.length; i++) {
-            if (uniqueX[i] - uniqueX[i-1] > 200) {
+            // A gap of ~200px between common start bounds is a strong two-column indicator
+            if (uniqueX[i] - uniqueX[i-1] >= 200) {
                 isTwoColumn = true;
                 break;
             }

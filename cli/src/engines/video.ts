@@ -51,15 +51,13 @@ export async function processVideo(inputFile: string, targetFormat: string, opti
             args.push('-maxrate', `${mb * 0.5}M`);
             args.push('-bufsize', `${mb}M`);
         }
+    } else if (options.actionType === 'extract' || ['mp3', 'wav', 'aac'].includes(format)) {
+        // Handle "extract audio" logically
+        args.push('-vn'); // no video
+        args.push('-acodec', format === 'mp3' ? 'libmp3lame' : format === 'aac' ? 'aac' : 'pcm_s16le');
     } else {
-        // Example logic to handle "extract audio" implicitly via target format
-        if (['mp3', 'wav', 'aac'].includes(format)) {
-            args.push('-vn'); // no video
-            args.push('-acodec', format === 'mp3' ? 'libmp3lame' : format === 'aac' ? 'aac' : 'pcm_s16le');
-        } else {
-            // Assume standard video conversion
-            args.push('-c:v', 'libx264', '-preset', 'fast');
-        }
+        // Assume standard video conversion
+        args.push('-c:v', 'libx264', '-preset', 'fast');
     }
 
     // Overwrite flag
