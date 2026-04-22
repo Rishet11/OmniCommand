@@ -1,8 +1,17 @@
+import { useState } from 'react';
 import { Terminal } from './components/Terminal';
 import { Terminal as TerminalIcon, Cpu, Shield, Zap, FileJson, FileText, Share2 } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export default function App() {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText('npm install -g omx-cmd');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div className="font-sans antialiased bg-[#F4F1ED] text-[#1A1A1A] min-h-screen selection:bg-[#FF6321] selection:text-white relative flex flex-col pt-10">
       
@@ -58,13 +67,18 @@ export default function App() {
             transition={{ delay: 0.3 }}
             className="flex flex-col sm:flex-row items-center gap-6 mb-16"
           >
-            <div className="relative group cursor-copy" onClick={() => navigator.clipboard.writeText('npm install -g omx-cmd')}>
+            <div className="relative group cursor-pointer" onClick={handleCopy}>
               <code className="flex items-center gap-6 bg-black px-6 py-4 rounded-sm text-[#F4F1ED] font-mono text-[13px] md:text-base border border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] hover:bg-[#1A1A1A] transition-colors">
-                <span><span className="text-white/40 select-none mr-3">$</span>npm install -g omx-cmd</span>
+                <span>
+                  {copied ? (
+                    <span className="text-[#FF6321]">Copied to clipboard!</span>
+                  ) : (
+                    <><span className="text-white/40 select-none mr-3">$</span>npm install -g omx-cmd</>
+                  )}
+                </span>
               </code>
             </div>
             <div className="flex flex-col gap-1 text-[10px] font-bold uppercase tracking-widest text-[#FF6321]">
-              <span>Requires Node.js 20.3.0+</span>
               <span className="text-black/40">~25MB Install Size</span>
             </div>
           </motion.div>
