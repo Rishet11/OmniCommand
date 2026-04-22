@@ -1,0 +1,6 @@
+{
+  "name": "OmniCommand (omx)",
+  "description": "Landing page and interactive terminal simulator for OmniCommand, the natural language CLI for file conversion and sharing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
