@@ -4,6 +4,9 @@
   "description": "The terminal tool for every format. Natural language file conversion.",
   "main": "dist/index.js",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "bin": {
     "omx": "./dist/index.js"
   },
