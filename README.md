@@ -1,50 +1,88 @@
-# OmniCommand (`omx`) — Monorepo
+# OmniCommand (`omx`)
 
-Welcome to the OmniCommand repository. This project contains both the **OmniCommand Command Line Interface** and its **Official Web Landing Page**.
+The terminal tool for every format. **OmniCommand** uses natural language terminal syntax to flawlessly convert, compress, and trim documents, images, and videos.
 
-## 📂 Repository Structure
-
-Because this project contains two separate applications, it is structured as a "monorepo":
-
-* **`/cli`** — This folder contains the actual Node.js CLI tool (`omx-cmd`). This is what gets published to NPM.
-* **`/` (Root)** — The root folder contains the React/Vite landing page (the website).
+No more memorizing complex FFmpeg flags, ImageMagick syntax, or Pandoc configurations. Just tell it what you want.
 
 ---
 
-## 💻 1. The CLI Tool (`/cli`)
+## 🚀 Installation
 
-The OmniCommand CLI uses natural language syntax to convert, compress, and trim files using FFmpeg, Sharp, and Pandoc under the hood (plus AI Vision OCR for scanned layout extraction).
+OmniCommand is published as `omx-cmd` to avoid namespace conflicts, but the executable binds globally as `omx`.
 
-**To build and test the CLI locally:**
 ```bash
-cd cli
-npm install
-npm run build
-
-# Test the local build:
-node dist/index.js convert test.pdf to markdown
+npm install -g omx-cmd
 ```
 
-**To publish to npm:**
+*Requires Node.js >= 20.3.0*
+
+Check that your installation was successful and that all engines are ready:
 ```bash
-cd cli
-npm publish
+omx doctor
 ```
-*(Note: NPM uses the `README.md` located inside the `/cli` folder to generate the npmjs.com page).*
+
+## 💻 Usage
+
+OmniCommand enforces strict "Natural Language" separators (`to`, `from`).
+
+### 1. Convert Anything
+Seamlessly convert document formats, video codecs, or image extensions.
+```bash
+omx convert report.pdf to markdown
+omx convert photo.png to webp
+omx convert footage.mov to mp4
+```
+
+### 2. Compress Media
+Intelligently shrinks file sizes using target percentages or fixed sizes.
+```bash
+omx compress video.mp4 to 50%
+omx compress photo.png to 800px
+```
+
+### 3. Trim Audio & Video
+Lossless, lightning-fast media trimming without re-encoding overhead.
+```bash
+omx trim podcast.mp3 from 0:30 to 1:45
+omx trim gameplay.mp4 from 10:00 to 12:30
+```
+
+## ⚙️ Features & Engines
+
+OmniCommand routes your files natively based on their format:
+
+* **Video & Audio (`ffmpeg-static`)**: We bundle a statically linked, pinned version of FFmpeg (v6.1.1/5.2.0) directly into the dependency tree. You don't need to install FFmpeg globally on your machine.
+* **Images (`sharp`)**: Blazing fast image processing utilizing pre-built Rust/C++ binaries. Fully supports modern formats like `.avif` and `.webp`.
+* **Documents (`pdfjs-dist` + `pandoc`)**: Converts PDFs, Docx, and other documents into Markdown or HTML natively. *(Note: Requires a system-level Pandoc installation).*
+
+## 🧠 Scanned PDFs & AI OCR (`--refine`)
+
+Local document conversion tools fail on scanned PDFs out-of-the-box. OmniCommand ships with a Preflight Scanner that detects images or complex two-column layouts inside PDFs before conversion. 
+
+If it detects a scanned document, you can bypass local failures using the `--refine` flag. This securely uploads the document to the Google Gemini 2.5 Flash Vision API to perfectly extract layout, tables, and text natively.
+
+**Setup AI Refinement:**
+1. Get a free Gemini API key from [Google AI Studio](https://aistudio.google.com/)
+2. Set it in your global config:
+```bash
+omx config set GEMINI_API_KEY your-api-key-here
+```
+3. Run the conversion:
+```bash
+omx convert scanned-report.pdf to markdown --refine
+```
+
+## 🛠️ Additional Flags
+
+* `--dry-run`: View the exact FFmpeg or underlying commands that would be executed without touching your files.
+* `--quiet`: Suppress CLI output and spinners.
+* `--overwrite` or `-y`: Automatically overwrite existing output files.
 
 ---
 
-## 🌐 2. The Landing Page (Root)
+## 📂 Repository Developer Guide
 
-The landing page is a React/Vite application styled with Tailwind CSS, featuring a fully interactive mock terminal that demonstrates exactly how the CLI functions.
+If you are downloading this source code to edit the project, note that it contains two parts:
 
-**To run the website locally:**
-```bash
-npm install
-npm run dev
-```
-
-**To build the website for production deployment (e.g., Vercel, Netlify):**
-```bash
-npm run build
-```
+1. **The CLI tool** is located in the `/cli` folder. To build it locally, run `cd cli && npm install && npm run build`.
+2. **The Landing Page (Website)** is located in the root folder. To run the website locally, run `npm install && npm run dev`.
