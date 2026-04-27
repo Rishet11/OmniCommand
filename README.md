@@ -1,8 +1,8 @@
 # OmniCommand (`omx`)
 
-The terminal tool for every format. **OmniCommand** uses natural language terminal syntax to flawlessly convert, compress, and trim documents, images, and videos.
+The terminal tool for every format. **OmniCommand** uses natural language terminal syntax to convert, compress, trim, and extract common document, image, and media workflows.
 
-No more memorizing complex FFmpeg flags, ImageMagick syntax, or Pandoc configurations. Just tell it what you want.
+No more memorizing complex FFmpeg flags, ImageMagick syntax, or Pandoc configurations. Use plain commands and let the CLI route them.
 
 ---
 
@@ -47,19 +47,31 @@ omx trim podcast.mp3 from 0:30 to 1:45
 omx trim gameplay.mp4 from 10:00 to 12:30
 ```
 
+### 4. Extract Audio
+Pull audio out of a video file as an MP3.
+```bash
+omx extract audio from video.mp4
+```
+
+### 5. Resize Images
+Resize an image while preserving its aspect ratio.
+```bash
+omx resize photo.png to 800px
+```
+
 ## ⚙️ Features & Engines
 
 OmniCommand routes your files natively based on their format:
 
-* **Video & Audio (`ffmpeg-static`)**: We bundle a statically linked, pinned version of FFmpeg (v6.1.1/5.2.0) directly into the dependency tree. You don't need to install FFmpeg globally on your machine.
+* **Video & Audio (`ffmpeg-static`)**: FFmpeg ships with the CLI through `ffmpeg-static`, so you do not need a separate global FFmpeg install for the default workflows.
 * **Images (`sharp`)**: Blazing fast image processing utilizing pre-built Rust/C++ binaries. Fully supports modern formats like `.avif` and `.webp`.
-* **Documents (`pdfjs-dist` + `pandoc`)**: Converts PDFs, Docx, and other documents into Markdown or HTML natively. *(Note: Requires a system-level Pandoc installation).*
+* **Documents (`pdfjs-dist` + `pandoc`)**: PDFs use local text extraction by default, and non-PDF documents use Pandoc when it is installed locally.
 
 ## 🧠 Scanned PDFs & AI OCR (`--refine`)
 
-Local document conversion tools fail on scanned PDFs out-of-the-box. OmniCommand ships with a Preflight Scanner that detects images or complex two-column layouts inside PDFs before conversion. 
+Local document conversion tools struggle on scanned PDFs out-of-the-box. OmniCommand ships with a preflight scanner that detects image-only or complex two-column layouts before conversion. 
 
-If it detects a scanned document, you can bypass local failures using the `--refine` flag. This securely uploads the document to the Google Gemini 2.5 Flash Vision API to perfectly extract layout, tables, and text natively.
+If it detects a scanned document, you can bypass local limitations using the `--refine` flag. This uploads the document to Gemini for richer extraction when you want that networked path.
 
 **Setup AI Refinement:**
 1. Get a free Gemini API key from [Google AI Studio](https://aistudio.google.com/)
@@ -74,7 +86,7 @@ omx convert scanned-report.pdf to markdown --refine
 
 ## 🛠️ Additional Flags
 
-* `--dry-run`: View the exact FFmpeg or underlying commands that would be executed without touching your files.
+* `--dry-run`: Preview the command that would run without writing files.
 * `--quiet`: Suppress CLI output and spinners.
 * `--overwrite` or `-y`: Automatically overwrite existing output files.
 

@@ -25,8 +25,9 @@ Commands:
   compress  Reduce the file size of images or videos
   trim      Trim a video file based on start and end timestamps
   extract   Extract audio from a video file
-  resize    Resize an image or video to specific dimensions
+  resize    Resize an image to specific dimensions
   doctor    Verify dependencies (ffmpeg, sharp, pandoc)
+  config    Save a global configuration value
 
 Options:
   --quiet        suppress progress output
@@ -39,14 +40,14 @@ Options:
   --help         display help for command`;
 
 const DOCTOR_OUTPUT = `✅ Node.js  (v20.3.0 or higher required, current is ok)
-✅ ffmpeg   (bundled via ffmpeg-static@5.2.0, pinned to 6.1.1)
-✅ sharp    (pre-built binary, requires Node ^18.17.0 || ^20.3.0 || >=21.0.0)
-✅ pandoc   (v3.6.1, hash verified)
+✅ ffmpeg   (bundled via ffmpeg-static)
+✅ sharp    (installed dependency)
+ℹ️ pandoc   (used for non-PDF document conversion when available)
+ℹ️ --refine requires a Gemini API key.
 
-Note: Do NOT install fluent-ffmpeg. It was archived in May 2025 and no longer works.
-OmniCommand bundles its own tested FFmpeg binary.
+System is ready for the workflows omx actually supports.`;
 
-System is healthy and ready to process files.`;
+const stripExtension = (value: string) => value.replace(/\.[^/.]+$/, '');
 
 export function Terminal() {
   const [lines, setLines] = useState<LogLine[]>([
@@ -133,10 +134,10 @@ export function Terminal() {
              addLine('Vision OCR complete. Layout reconstructed.');
              await simulateProgress('Converting scanned-report.pdf...', 'Output saved to: scanned-report_conv.md');
           } else {
-             addLine('✗ This PDF appears to be a scanned image (no selectable text).');
-             addLine('  Local conversion (Pandoc) cannot read images.');
+             addLine('✗ This PDF appears to be scanned or image-based.');
+             addLine('  Local text extraction cannot recover layout or images.');
              addLine('');
-             addLine('  Fix: Run with --refine to use AI Vision OCR.');
+             addLine('  Fix: Run with --refine to use AI Vision OCR, or export to txt.');
              addLine('  $ omx convert scanned-report.pdf to markdown --refine', { isInput: true });
           }
           setIsProcessing(false);
@@ -157,7 +158,7 @@ export function Terminal() {
              await new Promise(r => setTimeout(r, 1500));
              addLine('Refinement complete. Table layouts restored.');
           } else {
-             addLine('Warning: --refine flag omitted. PDF->MD tables may be broken.');
+             addLine('Warning: PDF text extraction preserves words, but not page layout.');
           }
           await simulateProgress('Converting report.pdf...', 'Output saved to: report_conv.md');
         } else {
@@ -167,14 +168,36 @@ export function Terminal() {
         break;
       }
       case 'compress': {
-        if (cmd.includes('video.mp4')) {
-          await simulateProgress('Compressing video.mp4...', 'Output saved to: video_conv.mp4');
-        } else if (cmd.includes('--dry-run')) {
+        if (cmd.includes('--dry-run')) {
+          const inputFile = cmd.split(/\s+/)[2] || 'file';
+          const ext = inputFile.includes('.') ? (inputFile.split('.').pop() || 'mp4') : 'mp4';
           addLine(`Dry Run mode.
-Would execute: ffmpeg -n -i video.mp4 -c:v libx264 -preset fast -crf 28 video_compress.mp4`);
+Would execute: ffmpeg -n -i ${inputFile} -c:v libx264 -preset fast -crf 28 ${stripExtension(inputFile)}_compress.${ext}`);
           setIsProcessing(false);
+        } else if (cmd.includes('video.mp4')) {
+          await simulateProgress('Compressing video.mp4...', 'Output saved to: video_compress.mp4');
         } else {
           addLine('Output saved to: file_conv.ext');
+          setIsProcessing(false);
+        }
+        break;
+      }
+      case 'extract': {
+        if (cmd.includes('audio from video.mp4')) {
+          await simulateProgress('Extracting audio from video.mp4...', 'Output saved to: video_extract.mp3');
+        } else {
+          const inputFile = cmd.split(/\s+/).at(-1) || 'video.mp4';
+          addLine(`Output saved to: ${stripExtension(inputFile)}_extract.mp3`);
+          setIsProcessing(false);
+        }
+        break;
+      }
+      case 'resize': {
+        if (cmd.includes('photo.png') && cmd.includes('800px')) {
+          await simulateProgress('Resizing photo.png...', 'Output saved to: photo_resize.png');
+        } else {
+          const inputFile = cmd.split(/\s+/)[2] || 'photo.png';
+          addLine(`Output saved to: ${stripExtension(inputFile)}_resize.${inputFile.includes('.') ? (inputFile.split('.').pop() || 'png') : 'png'}`);
           setIsProcessing(false);
         }
         break;

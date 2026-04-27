@@ -17,7 +17,7 @@ export default function App() {
       
       {/* Side Rail */}
       <div className="hidden lg:flex fixed top-0 right-0 w-16 xl:w-24 h-full border-l border-black/10 items-center justify-center pointer-events-none z-0">
-        <p className="transform rotate-90 whitespace-nowrap text-[10px] tracking-[0.3em] font-bold text-black/40 uppercase">OmniCommand &middot; Ver 1.0</p>
+        <p className="transform rotate-90 whitespace-nowrap text-[10px] tracking-[0.3em] font-bold text-black/40 uppercase">OmniCommand &middot; CLI, MCP, Demo</p>
       </div>
 
       <div className="max-w-[1200px] mx-auto w-full px-6 lg:px-12 flex-grow flex flex-col relative z-10">
@@ -25,8 +25,8 @@ export default function App() {
         <header className="border-b-[3px] border-black pb-6 mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
             <div className="flex items-baseline gap-6 mb-4">
-              <span className="text-[12px] font-mono font-bold uppercase tracking-widest text-[#FF6321]">Status: Build-Ready</span>
-              <span className="text-[12px] font-mono font-bold uppercase tracking-widest underline underline-offset-4">Scope: CLI MVP</span>
+              <span className="text-[12px] font-mono font-bold uppercase tracking-widest text-[#FF6321]">Status: Local-First</span>
+              <span className="text-[12px] font-mono font-bold uppercase tracking-widest underline underline-offset-4">Scope: Real Workflows</span>
             </div>
             <div className="flex items-center gap-2 font-serif italic text-4xl md:text-5xl tracking-tight">
               <TerminalIcon className="w-8 h-8 text-[#FF6321]" />
@@ -57,8 +57,8 @@ export default function App() {
             transition={{ delay: 0.2 }}
             className="text-xl md:text-2xl font-medium text-black/80 max-w-3xl mb-12 leading-tight"
           >
-            Natural language parsing. Bundled FFmpeg, Sharp, and Pandoc. 
-            All in one local, offline CLI.
+            A practical file conversion CLI for documents, images, and media.
+            Local by default, with optional AI refinement for scanned PDFs.
           </motion.p>
           
           <motion.div 
@@ -79,7 +79,7 @@ export default function App() {
               </code>
             </div>
             <div className="flex flex-col gap-1 text-[10px] font-bold uppercase tracking-widest text-[#FF6321]">
-              <span className="text-black/40">~25MB Install Size</span>
+              <span className="text-black/40">One command. Real outputs.</span>
             </div>
           </motion.div>
           
@@ -91,12 +91,12 @@ export default function App() {
           >
             <Terminal />
             <div className="mt-6 flex flex-col md:flex-row items-baseline gap-4 md:gap-8 text-[11px] font-bold uppercase tracking-widest text-black/50">
-               <span>Edge-cases test bed:</span>
+               <span>Try real commands:</span>
                <div className="flex flex-wrap gap-4">
-                   <button onClick={() => navigator.clipboard.writeText('omx convert report.pdf to markdown')} className="hover:text-[#FF6321] transition-colors underline underline-offset-4">Convert PDF &rarr;</button>
-                   <button onClick={() => navigator.clipboard.writeText('omx convert scanned-report.pdf to markdown')} className="hover:text-[#FF6321] transition-colors underline underline-offset-4">Scanned Error &rarr;</button>
-                   <button onClick={() => navigator.clipboard.writeText('omx convert scanned-report.pdf to markdown --refine')} className="hover:text-[#FF6321] transition-colors underline underline-offset-4">AI Vision OCR &rarr;</button>
-                   <button onClick={() => navigator.clipboard.writeText('omx convert two-column.pdf to markdown')} className="hover:text-[#FF6321] transition-colors underline underline-offset-4">Two-Column Warning &rarr;</button>
+                   <button onClick={() => navigator.clipboard.writeText('omx convert report.pdf to markdown')} className="hover:text-[#FF6321] transition-colors underline underline-offset-4">PDF to Markdown &rarr;</button>
+                   <button onClick={() => navigator.clipboard.writeText('omx convert scanned-report.pdf to markdown')} className="hover:text-[#FF6321] transition-colors underline underline-offset-4">Scanned PDF &rarr;</button>
+                   <button onClick={() => navigator.clipboard.writeText('omx convert scanned-report.pdf to markdown --refine')} className="hover:text-[#FF6321] transition-colors underline underline-offset-4">AI Refine &rarr;</button>
+                   <button onClick={() => navigator.clipboard.writeText('omx convert two-column.pdf to markdown')} className="hover:text-[#FF6321] transition-colors underline underline-offset-4">Two-Column PDF &rarr;</button>
                    <button onClick={() => navigator.clipboard.writeText('omx compress footage.mp4 to 50% --dry-run')} className="hover:text-[#FF6321] transition-colors underline underline-offset-4">Dry Run &rarr;</button>
                </div>
             </div>
@@ -106,47 +106,47 @@ export default function App() {
         {/* Features Grid */}
         <section id="features" className="py-24 border-b border-black/10">
           <div className="mb-16">
-            <h2 className="font-serif italic text-3xl md:text-4xl mb-4">01. Zero Friction, Infinite Power</h2>
-            <p className="text-lg font-medium text-black/60 max-w-2xl">We combined the best engines on the planet behind a single, agent-friendly natural language API.</p>
+            <h2 className="font-serif italic text-3xl md:text-4xl mb-4">01. Real Workflows, Fewer Flags</h2>
+            <p className="text-lg font-medium text-black/60 max-w-2xl">The interface stays close to how people actually work: plain language commands, local processing, and clear fallbacks when a format needs help.</p>
           </div>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-16">
             <FeatureCard 
               icon={<Zap className="w-6 h-6" />}
-              title="Rule-Based NL Parser"
-              description="No cloud LLMs required for parsing. Fast, offline Regex rules that understand natural language intents instantly."
+              title="Natural Language CLI"
+              description="The parser accepts the phrases users already type: convert, compress, trim, extract, and resize."
             />
             <FeatureCard 
               icon={<Cpu className="w-6 h-6" />}
-              title="Multi-Format Engine"
-              description="FFmpeg-static bundled. Sharp pre-built. Pandoc auto-downloads and hash-verifies on first run."
+              title="Bundled Media Tools"
+              description="Video and audio work runs through ffmpeg-static. Images use Sharp. Documents use Pandoc when it is installed."
             />
             <FeatureCard 
               icon={<FileJson className="w-6 h-6" />}
-              title="Agent & Script Ready"
-              description="Full JSON output with --json. Predictable exit codes. Dry-run support. No interactive prompts in CI."
+              title="Script Friendly"
+              description="Dry-run previews do not write files, JSON output stays structured, and the CLI exits cleanly for automation."
             />
             <FeatureCard 
               icon={<FileText className="w-6 h-6" />}
-              title="AI Document Refinement"
-              description="Pass --refine to fix lossy Pandoc PDF→MD conversions using an LLM. Shows cost estimate upfront."
+              title="Optional AI Refinement"
+              description="Pass --refine for scanned PDFs when you have a Gemini API key. Everything else stays local."
             />
             <FeatureCard 
               icon={<Share2 className="w-6 h-6" />}
-              title="MCP Support (V1.1)"
-              description="Ready to pipe straight into Claude Code, Cursor, and Windsurf via Model Context Protocol."
+              title="MCP Support"
+              description="The MCP server exposes the same real CLI workflows to agentic tools through Model Context Protocol."
             />
             <FeatureCard 
               icon={<Shield className="w-6 h-6" />}
-              title="100% Local & Offline"
-              description="Zero network requests required. Your files never leave your machine. Infinite runway, impossible to abuse."
+              title="Local by Default"
+              description="No cloud call is needed for standard conversion. The only networked path is the explicit AI refinement flow."
             />
           </div>
         </section>
 
         {/* Docs Snippets */}
         <section id="docs" className="py-24">
-          <h2 className="font-serif italic text-3xl md:text-4xl mb-12">02. Command Reference</h2>
+            <h2 className="font-serif italic text-3xl md:text-4xl mb-12">02. Command Reference</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             <DocCard title="Convert" code={
   `# Video, images, documents
@@ -178,12 +178,12 @@ for f in *.mp4; do omx compress "$f" to 50% --dry-run; done`} />
         {/* Footer */}
         <footer className="mt-auto flex flex-col md:flex-row justify-between md:items-end border-t-[3px] border-black py-8 text-[10px] uppercase font-bold tracking-[0.2em]">
           <div className="flex flex-col md:flex-row gap-4 md:space-x-8 mb-6 md:mb-0 text-black/60">
-            <span>No Analytics</span>
-            <span>E2EE Default</span>
-            <span>100% Offline Core</span>
+            <span>Local-first</span>
+            <span>Optional AI refine</span>
+            <span>MCP ready</span>
           </div>
           <div className="flex flex-col items-start md:items-end gap-2">
-            <span className="opacity-40">Designed for the Agentic Era</span>
+            <span className="opacity-40">Built around real CLI workflows</span>
             <span className="text-[#FF6321]">github.com/omnicommand/omx</span>
           </div>
         </footer>
