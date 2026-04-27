@@ -4,17 +4,6 @@ import fs from 'fs';
 import path from 'path';
 
 export async function processVideo(inputFile: string, targetFormat: string, options: any): Promise<string> {
-    if (!fs.existsSync(inputFile)) {
-        throw new Error(`File not found: ${inputFile}`);
-    }
-
-    // Typecast to string to fix TS inference error for the default export
-    const binaryPath = ffmpegPath as unknown as string;
-
-    if (!binaryPath) {
-        throw new Error(`ffmpeg binary not found in ffmpeg-static.`);
-    }
-
     const { dir, name } = path.parse(inputFile);
     const format = targetFormat.toLowerCase().replace('.', '');
     const outputPath = path.join(dir, `${name}_${options.actionType || 'conv'}.${format}`);
@@ -71,7 +60,21 @@ export async function processVideo(inputFile: string, targetFormat: string, opti
 
     // Dry run
     if (options.dryRun) {
-        throw new Error(`Dry Run mode.\nWould execute: ffmpeg ${args.join(' ')}`);
+        if (!options.quiet && !options.json) {
+            console.log(`Dry run: would execute: ffmpeg ${args.join(' ')}`);
+        }
+        return outputPath;
+    }
+
+    if (!fs.existsSync(inputFile)) {
+        throw new Error(`File not found: ${inputFile}`);
+    }
+
+    // Typecast to string to fix TS inference error for the default export
+    const binaryPath = ffmpegPath as unknown as string;
+
+    if (!binaryPath) {
+        throw new Error(`ffmpeg binary not found in ffmpeg-static.`);
     }
 
     return new Promise((resolve, reject) => {

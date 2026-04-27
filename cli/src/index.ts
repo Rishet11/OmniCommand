@@ -5,13 +5,18 @@ import chalk from 'chalk';
 import ora from 'ora';
 import { createRequire } from 'module';
 import path from 'path';
-import { processPdf } from './engines/pdf.js';
+import { execFile } from 'child_process';
+import util from 'util';
+import ffmpegPath from 'ffmpeg-static';
+import { processDocument } from './engines/document.js';
 import { processImage } from './engines/image.js';
 import { processVideo } from './engines/video.js';
+import { getConfig } from './utils/config.js';
 
 // Use createRequire to read our own package.json for versioning
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
+const execFileAsync = util.promisify(execFile);
 
 const program = new Command();
 
@@ -34,38 +39,56 @@ program
 function capitalize(str: string) { return str.charAt(0).toUpperCase() + str.slice(1); }
 
 async function executeEngine(inputFile: string, actionType: string, options: any) {
-    if (!options.quiet && !options.json) {
+    if (!options.quiet && !options.json && !options.dryRun) {
         console.log(chalk.gray(`\nAnalyzing ${inputFile}...`));
     }
 
-    const spinner = ora({
-        text: `${capitalize(actionType)}ing ${inputFile}...`,
-        isSilent: options.json || options.quiet
-    }).start();
+    const spinner = options.dryRun
+        ? ora({ isSilent: true })
+        : ora({
+            text: `${capitalize(actionType)}ing ${inputFile}...`,
+            isSilent: options.json || options.quiet
+        }).start();
 
     try {
         const ext = path.extname(inputFile).toLowerCase();
         let outputPath = '';
 
         // Supported formats
-        const imageExts = ['.jpg', '.jpeg', '.png', '.webp', '.avif', '.gif', '.tiff'];
-        const videoExts = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.mp3', '.wav', '.aac', '.flac'];
+        const imageExts = ['.jpg', '.jpeg', '.png', '.webp', '.avif', '.gif', '.tiff', '.bmp', '.ico'];
+        const videoExts = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv', '.3gp', '.mp3', '.wav', '.aac', '.flac', '.m4a', '.ogg', '.opus'];
+        const documentExts = ['.pdf', '.docx', '.doc', '.pptx', '.xlsx', '.rtf', '.txt', '.md', '.markdown'];
 
         options.actionType = actionType;
         const targetFormat = options.targetFormat || ext.replace('.', '');
 
-        if (ext === '.pdf') {
-            if (actionType !== 'convert') throw new Error(`Cannot ${actionType} a PDF.`);
-            spinner.text = `Processing PDF: ${inputFile}...`;
-            outputPath = await processPdf(inputFile, targetFormat, options);
+        if (!documentExts.includes(ext) && !imageExts.includes(ext) && !videoExts.includes(ext)) {
+            if (options.dryRun) {
+                if (!options.quiet && !options.json) {
+                    console.log(chalk.cyan(`Dry run: extension ${ext} is not supported by omx.`));
+                }
+                return;
+            }
+            throw new Error(`Extension ${ext} not supported. Try a document, image, or video.`);
+        }
+
+        if (documentExts.includes(ext)) {
+            spinner.text = `Processing Document: ${inputFile}...`;
+            outputPath = await processDocument(inputFile, targetFormat, options);
         } else if (imageExts.includes(ext)) {
             spinner.text = `Processing Image (Sharp): ${inputFile}...`;
             outputPath = await processImage(inputFile, targetFormat, options);
         } else if (videoExts.includes(ext)) {
             spinner.text = `Processing Media (FFmpeg): ${inputFile}...`;
             outputPath = await processVideo(inputFile, targetFormat, options);
-        } else {
-            throw new Error(`Extension ${ext} not supported. Try a document, image, or video.`);
+        }
+
+        if (options.dryRun) {
+            spinner.stop();
+            if (options.json) {
+                console.log(JSON.stringify({ success: true, dryRun: true, inputFile, outputPath, action: actionType }, null, 2));
+            }
+            return;
         }
 
         spinner.succeed(chalk.green(`Output saved to: ${outputPath}`));
@@ -87,7 +110,7 @@ async function executeEngine(inputFile: string, actionType: string, options: any
 // --- EXTRACT COMMAND ---
 program
   .command('extract <trackType> <separator> <inputFile>')
-  .description('Extract audio/subs from video')
+  .description('Extract audio from a video file')
   .action(async (trackType, separator, inputFile, options, command) => {
     if (separator.toLowerCase() !== 'from') {
         console.error(chalk.red(`\n✗ Invalid syntax. Use: omx extract <type> from <file>\n  Example: omx extract audio from video.mp4\n`));
@@ -95,10 +118,13 @@ program
     }
     validateNodeVersion();
     const globalOpts = command.parent.opts();
-    
-    // Default audio extraction to mp3 (this is seamlessly passed down to processVideo's targetFormat logic)
-    const targetFormat = trackType.toLowerCase() === 'audio' ? 'mp3' : 'mp4';
-    await executeEngine(inputFile, 'extract', { ...globalOpts, ...options, targetFormat });
+
+    if (trackType.toLowerCase() !== 'audio') {
+        console.error(chalk.red(`\n✗ Only audio extraction is supported right now.\n  Use: omx extract audio from <file>\n`));
+        process.exit(1);
+    }
+
+    await executeEngine(inputFile, 'extract', { ...globalOpts, ...options, targetFormat: 'mp3' });
   });
 
 // --- CONVERT COMMAND ---
@@ -155,31 +181,63 @@ program
     }
     validateNodeVersion();
     const globalOpts = command.parent.opts();
-    // Pass as compress target, image engine natively handles px
-    await executeEngine(inputFile, 'compress', { ...globalOpts, ...options, compressTarget: targetSize });
+    await executeEngine(inputFile, 'resize', { ...globalOpts, ...options, targetSize, targetFormat: path.extname(inputFile).replace('.', '') });
   });
 
 // --- DOCTOR COMMAND ---
 program
   .command('doctor')
   .description('Verify system dependencies (ffmpeg, sharp, pandoc)')
-  .action(() => {
+  .action(async () => {
     console.log(chalk.bold.underline('\nOmniCommand System Health Check\n'));
     
     // 1. Node.js Check
     validateNodeVersion(true);
 
-    // 2. FFmpeg Check Placeholder
-    console.log(`✅ ${chalk.bold('ffmpeg')}   (bundled via ffmpeg-static@5.2.0, pinned to 6.1.1)`);
-    
-    // 3. Sharp Check Placeholder
-    console.log(`✅ ${chalk.bold('sharp')}    (pre-built binary dynamically loaded)`);
-    
-    // 4. Pandoc Check Placeholder
-    console.log(`✅ ${chalk.bold('pandoc')}   (v3.6.1, hash verified)`);
+    // 2. FFmpeg Check
+    if (ffmpegPath) {
+        try {
+            const binaryPath = ffmpegPath as unknown as string;
+            const ffmpegVersion = await new Promise<string>((resolve, reject) => {
+                execFile(binaryPath, ['-version'], (error: any, stdout: string) => {
+                    if (error) return reject(error);
+                    resolve(stdout.split('\n')[0] || 'ffmpeg available');
+                });
+            });
+            console.log(`✅ ${chalk.bold('ffmpeg')}   (${ffmpegVersion})`);
+        } catch {
+            console.log(`⚠️ ${chalk.bold('ffmpeg')}   bundled binary could not be executed`);
+        }
+    } else {
+        console.log(`✗ ${chalk.bold('ffmpeg')}   bundled binary not found`);
+    }
 
-    console.log(chalk.dim('\nNote: Do NOT install fluent-ffmpeg. It was archived in May 2025 and no longer works.'));
-    console.log(chalk.green.bold('\nSystem is healthy and ready to process files.\n'));
+    // 3. Sharp Check
+    try {
+        const sharpModule = await import('sharp');
+        const sharpVersion = sharpModule.default?.versions?.sharp || 'installed';
+        console.log(`✅ ${chalk.bold('sharp')}    (version ${sharpVersion})`);
+    } catch (error) {
+        console.log(`✗ ${chalk.bold('sharp')}    unavailable: ${(error as Error).message}`);
+    }
+
+    // 4. Pandoc Check
+    try {
+        const pandocVersion = await new Promise<string>((resolve, reject) => {
+            execFile('pandoc', ['--version'], (error, stdout) => {
+                if (error) return reject(error);
+                resolve(stdout.split('\n')[0] || 'pandoc available');
+            });
+        });
+        console.log(`✅ ${chalk.bold('pandoc')}   (${pandocVersion})`);
+    } catch {
+        console.log(`ℹ️ ${chalk.bold('pandoc')}   not installed on PATH; PDF text extraction still works, but non-PDF document conversion needs Pandoc.`);
+    }
+
+    const geminiConfigured = !!(process.env.GEMINI_API_KEY || getConfig('GEMINI_API_KEY'));
+    console.log(geminiConfigured
+        ? chalk.green('\nGemini API key is configured for --refine.\n')
+        : chalk.yellow('\nGemini API key is not configured. --refine will fail until you set GEMINI_API_KEY.\n'));
   });
 
 // Helper to strictly enforce the >=20.3.0 Node rule programmatically
@@ -213,4 +271,8 @@ program
     console.log(chalk.green(`\n✅ Saved ${key} to OmniCommand configuration.\n`));
   });
 
-program.parse(process.argv);
+if (process.argv.includes('--no-color')) {
+    chalk.level = 0;
+}
+
+await program.parseAsync(process.argv);
