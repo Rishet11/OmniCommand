@@ -12,3 +12,7 @@ package-lock.json
 # Temporary test files
 test*.*
 test *.*
+
+# Internal Documents and Reports
+OmniCommand_PRD_v5_FINAL.md
+NPM_Publish_Readiness_Audit_Report.md

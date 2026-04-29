@@ -36,7 +36,7 @@ export default function App() {
           <div className="flex items-center gap-6 text-[10px] font-bold uppercase tracking-[0.2em] text-black/60">
             <a href="#features" className="hover:text-[#FF6321] transition-colors">Features</a>
             <a href="#docs" className="hover:text-[#FF6321] transition-colors">Docs</a>
-            <a href="https://github.com/omnicommand/omx" target="_blank" rel="noopener noreferrer" className="hover:text-[#FF6321] transition-colors">GitHub</a>
+            <a href="https://github.com/Rishet11/OmniCommand" target="_blank" rel="noopener noreferrer" className="hover:text-[#FF6321] transition-colors">GitHub</a>
           </div>
         </header>
 
@@ -184,7 +184,7 @@ for f in *.mp4; do omx compress "$f" to 50% --dry-run; done`} />
           </div>
           <div className="flex flex-col items-start md:items-end gap-2">
             <span className="opacity-40">Built around real CLI workflows</span>
-            <span className="text-[#FF6321]">github.com/omnicommand/omx</span>
+            <span className="text-[#FF6321]">github.com/Rishet11/OmniCommand</span>
           </div>
         </footer>
       </div>

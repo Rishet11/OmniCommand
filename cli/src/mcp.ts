@@ -6,11 +6,15 @@ import { processDocument } from "./engines/document.js";
 import { processImage } from "./engines/image.js";
 import { processVideo } from "./engines/video.js";
 import path from "path";
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json");
 
 // Initialize the OmniCommand MCP Server
 const server = new McpServer({
   name: "omnicommand",
-  version: "1.0.1",
+  version: pkg.version,
 });
 
 // Helper to determine which engine to use based on extension

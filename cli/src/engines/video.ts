@@ -78,12 +78,33 @@ export async function processVideo(inputFile: string, targetFormat: string, opti
     }
 
     return new Promise((resolve, reject) => {
-        execFile(binaryPath, args, (error: any, stdout: string, stderr: string) => {
+        const childProcess = execFile(binaryPath, args, (error: any, stdout: string, stderr: string) => {
             if (error) {
-                // ffmpeg prints to stderr even on success, so we must rely on the exit code
+                // Clean up partial output on failure
+                if (fs.existsSync(outputPath)) {
+                    try { fs.unlinkSync(outputPath); } catch {}
+                }
                 return reject(new Error(`FFmpeg processing failed: ${error.message}`));
             }
             resolve(outputPath);
+        });
+
+        // Ctrl+C / SIGTERM cleanup — delete partial file and exit cleanly
+        const cleanup = () => {
+            childProcess.kill('SIGTERM');
+            if (fs.existsSync(outputPath)) {
+                try { fs.unlinkSync(outputPath); } catch {}
+            }
+            process.stderr.write('\nCancelled. Partial output removed.\n');
+            process.exit(1);
+        };
+
+        process.once('SIGINT', cleanup);
+        process.once('SIGTERM', cleanup);
+
+        childProcess.on('close', () => {
+            process.removeListener('SIGINT', cleanup);
+            process.removeListener('SIGTERM', cleanup);
         });
     });
 }

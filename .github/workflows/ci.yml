@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20, 22]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: cli/package-lock.json
+
+      - name: Install dependencies
+        run: cd cli && npm ci
+
+      - name: Build
+        run: cd cli && npm run build
+
+      - name: Run tests
+        run: cd cli && npm test
+
+  pack-check:
+    name: Pack Dry-run (verify publishable)
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: cd cli && npm ci
+
+      - name: Copy LICENSE for pack
+        run: cp LICENSE cli/LICENSE
+
+      - name: Build
+        run: cd cli && npm run build
+
+      - name: Verify pack contents
+        run: |
+          cd cli
+          PACK_OUTPUT=$(npm pack --dry-run 2>&1)
+          echo "$PACK_OUTPUT"
+          echo "$PACK_OUTPUT" | grep "LICENSE" || (echo "ERROR: LICENSE not in package" && exit 1)
+          echo "$PACK_OUTPUT" | grep "README.md" || (echo "ERROR: README not in package" && exit 1)
+          echo "Pack check passed ✅"

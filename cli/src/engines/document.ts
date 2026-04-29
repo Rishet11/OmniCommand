@@ -90,9 +90,10 @@ export async function processDocument(inputFile: string, targetFormat: string, o
         }
 
         const stats = fs.statSync(inputFile);
-        const estimatedCost = (stats.size / 1024 / 1024 * 0.002).toFixed(4); // Fake rough approximation
+        const fileSizeMB = (stats.size / 1024 / 1024).toFixed(2);
         if (!options.quiet && !options.json) {
-            console.log(chalk.cyan(`\nℹ️ Estimating AI conversion cost: ~$${estimatedCost} for ${(stats.size/1024/1024).toFixed(2)}MB file.`));
+            console.log(chalk.cyan(`\nℹ️ Uploading ${fileSizeMB}MB to Gemini for AI extraction.`));
+            console.log(chalk.gray(`   Actual cost depends on your API plan: https://ai.google.dev/pricing`));
         }
 
         const ai = new GoogleGenAI({ apiKey });
@@ -195,7 +196,7 @@ async function extractTextFromPdf(filepath: string): Promise<string> {
 
 export async function preflightPDF(filepath: string, options: any): Promise<boolean> {
     if (options.refine) {
-        if (!options.quiet) {
+        if (!options.quiet && !options.json) {
             console.log(chalk.cyan(`\nℹ️ --refine flag detected. Bypassing Pandoc and routing to AI Vision OCR...`));
         }
         return true; 
@@ -243,7 +244,7 @@ export async function preflightPDF(filepath: string, options: any): Promise<bool
         }
     }
 
-    if (isTwoColumn && !options.quiet) {
+    if (isTwoColumn && !options.quiet && !options.json) {
         console.warn(chalk.yellow(
             "\n⚠️ Warning: This PDF appears to use a two-column layout.\n" +
             "  Local text extraction may disrupt the layout.\n" +
