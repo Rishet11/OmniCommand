@@ -2,19 +2,21 @@ import sharp from 'sharp';
 import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
+import type { ProcessOptions } from '../types.js';
 
 function normalizeImageFormat(targetFormat: string) {
     const format = targetFormat.toLowerCase().replace(/^\./, '');
     return format === 'jpeg' ? 'jpg' : format;
 }
 
-export async function processImage(inputFile: string, targetFormat: string, options: any) {
+export async function processImage(inputFile: string, targetFormat: string, options: ProcessOptions) {
     const { dir, name } = path.parse(inputFile);
     const format = normalizeImageFormat(targetFormat);
     const outputPath = path.join(dir, `${name}_${options.actionType || 'conv'}.${format}`);
+    const optionValues = options as ProcessOptions & { compressTarget?: string; targetSize?: string; width?: number; height?: number; quality?: number };
 
     if (options.dryRun) {
-        const target = String(options.compressTarget || options.targetSize || '').trim();
+        const target = String(optionValues.compressTarget || optionValues.targetSize || '').trim();
         const sizeSuffix = target ? ` [target: ${target}]` : '';
         if (!options.quiet && !options.json) {
             const inputKB = fs.existsSync(inputFile) ? (fs.statSync(inputFile).size / 1024).toFixed(0) : '?';
@@ -28,15 +30,15 @@ export async function processImage(inputFile: string, targetFormat: string, opti
     }
 
     if (options.actionType === 'compress' || options.actionType === 'resize') {
-        const target = String(options.compressTarget || options.targetSize || '').toLowerCase();
+        const target = String(optionValues.compressTarget || optionValues.targetSize || '').toLowerCase();
         if (target.endsWith('%')) {
             const pct = Math.min(100, Math.max(1, parseInt(target.replace('%', ''))));
             // Scale quality proportionally: 100% → quality 90, 50% → quality 45, 10% → quality 9
-            options.quality = Math.max(1, Math.round(pct * 0.9));
+            optionValues.quality = Math.max(1, Math.round(pct * 0.9));
         } else if (target.endsWith('mb') || target.endsWith('kb')) {
-            options.quality = 85; // start high for lossy formats
+            optionValues.quality = 85; // start high for lossy formats
         } else if (target.endsWith('px')) {
-            options.width = parseInt(target.replace('px', ''));
+            optionValues.width = parseInt(target.replace('px', ''));
         }
     }
 
@@ -59,10 +61,11 @@ export async function processImage(inputFile: string, targetFormat: string, opti
     const image = sharp(inputFile);
 
     // Resize if width/height requested
-    if (options.width || options.height) {
+    const imageOptions = optionValues;
+    if (imageOptions.width || imageOptions.height) {
         image.resize({
-            width: options.width ? parseInt(options.width) : undefined,
-            height: options.height ? parseInt(options.height) : undefined,
+            width: imageOptions.width ? parseInt(String(imageOptions.width)) : undefined,
+            height: imageOptions.height ? parseInt(String(imageOptions.height)) : undefined,
             fit: 'inside',
             withoutEnlargement: true
         });
@@ -74,17 +77,17 @@ export async function processImage(inputFile: string, targetFormat: string, opti
         switch (effectiveFormat) {
             case 'jpeg':
             case 'jpg':
-                await image.jpeg({ quality: options.quality ?? 80 }).toFile(effectiveOutputPath);
+                await image.jpeg({ quality: imageOptions.quality ?? 80 }).toFile(effectiveOutputPath);
                 break;
             case 'png':
                 // No palette:true — it inflates many PNGs
                 await image.png({ compressionLevel: 9 }).toFile(effectiveOutputPath);
                 break;
             case 'webp':
-                await image.webp({ quality: options.quality ?? 80 }).toFile(effectiveOutputPath);
+                await image.webp({ quality: imageOptions.quality ?? 80 }).toFile(effectiveOutputPath);
                 break;
             case 'avif':
-                await image.avif({ quality: options.quality ?? 50 }).toFile(effectiveOutputPath);
+                await image.avif({ quality: imageOptions.quality ?? 50 }).toFile(effectiveOutputPath);
                 break;
             case 'gif':
                 await image.gif().toFile(effectiveOutputPath);

@@ -3,12 +3,9 @@ import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import * as fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
-import { GoogleGenAI } from '@google/genai';
 import { getConfig } from '../utils/config.js';
 import { execFile } from 'child_process';
-import util from 'util';
-
-const execFileAsync = util.promisify(execFile);
+import type { ProcessOptions } from '../types.js';
 
 function normalizeDocumentFormat(targetFormat: string) {
     const format = targetFormat.toLowerCase().replace(/^\./, '');
@@ -28,7 +25,7 @@ function isLocalPdfTargetSupported(targetFormat: string) {
     return ['md', 'txt'].includes(targetFormat);
 }
 
-export async function processDocument(inputFile: string, targetFormat: string, options: any) {
+export async function processDocument(inputFile: string, targetFormat: string, options: ProcessOptions) {
     const ext = path.extname(inputFile).toLowerCase();
     const normalizedTarget = normalizeDocumentFormat(targetFormat);
     const outputPath = inputFile.replace(/\.[^/.]+$/, '') + `_${options.actionType || 'conv'}.` + normalizedTarget;
@@ -96,6 +93,17 @@ export async function processDocument(inputFile: string, targetFormat: string, o
             console.log(chalk.gray(`   Actual cost depends on your API plan: https://ai.google.dev/pricing`));
         }
 
+        let GoogleGenAI: typeof import('@google/genai').GoogleGenAI;
+        try {
+            ({ GoogleGenAI } = await import('@google/genai'));
+        } catch {
+            throw new Error(
+                "AI refinement requires the optional @google/genai package.\n" +
+                "Install optional dependencies with: npm install -g omx-cmd --include=optional\n" +
+                "Then set GEMINI_API_KEY and retry."
+            );
+        }
+
         const ai = new GoogleGenAI({ apiKey });
         
         try {
@@ -129,7 +137,24 @@ export async function processDocument(inputFile: string, targetFormat: string, o
     } else {
         // Standard Local Pandoc Execution for Word, PPT, etc.
         try {
-            await execFileAsync('pandoc', [inputFile, '-o', outputPath]);
+            const pandocArgs = [inputFile, '-o', outputPath];
+            if (normalizedTarget === 'pdf') {
+                pandocArgs.push(
+                    '--pdf-engine=xelatex',
+                    // 0.75in margins give ~7in text width on letter paper → much better
+                    // page coverage than the old 1in default (6.5in text width).
+                    '-V', 'geometry:top=0.75in,bottom=0.75in,left=0.9in,right=0.9in',
+                    '-V', 'fontsize=12pt',
+                    // Slightly open line-spacing improves readability on dense text files.
+                    '-V', 'linestretch=1.15'
+                );
+            }
+            await new Promise<void>((resolve, reject) => {
+                execFile('pandoc', pandocArgs, (error) => {
+                    if (error) reject(error);
+                    else resolve();
+                });
+            });
         } catch (e: any) {
             if (e.code === 'ENOENT') {
                 throw new Error(
@@ -145,7 +170,7 @@ export async function processDocument(inputFile: string, targetFormat: string, o
     return outputPath;
 }
 
-async function compressPdf(inputFile: string, outputPath: string, options: any) {
+async function compressPdf(inputFile: string, outputPath: string, options: ProcessOptions) {
     const existingPdfBytes = fs.readFileSync(inputFile);
     
     // Load the PDF
@@ -187,14 +212,14 @@ async function extractTextFromPdf(filepath: string): Promise<string> {
     for (let i = 1; i <= doc.numPages; i++) {
         const page = await doc.getPage(i);
         const content = await page.getTextContent();
-        const strings = content.items.map((item: any) => item.str);
+        const strings = content.items.map((item) => 'str' in item ? item.str : '');
         fullText += strings.join(" ") + "\n\n";
     }
 
     return fullText;
 }
 
-export async function preflightPDF(filepath: string, options: any): Promise<boolean> {
+export async function preflightPDF(filepath: string, options: Pick<ProcessOptions, 'quiet' | 'json' | 'targetFormat'> & { refine?: boolean }): Promise<boolean> {
     if (options.refine) {
         if (!options.quiet && !options.json) {
             console.log(chalk.cyan(`\nℹ️ --refine flag detected. Bypassing Pandoc and routing to AI Vision OCR...`));
@@ -213,9 +238,9 @@ export async function preflightPDF(filepath: string, options: any): Promise<bool
         const page = await doc.getPage(i);
         const content = await page.getTextContent();
         
-        content.items.forEach((item: any) => {
-            if (item.str) totalChars += item.str.length;
-            if (item.transform) {
+        content.items.forEach((item) => {
+            if ('str' in item && item.str) totalChars += item.str.length;
+            if ('transform' in item && item.transform) {
                 xPositions.push(Math.round(item.transform[4])); 
             }
         });

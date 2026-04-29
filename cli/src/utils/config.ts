@@ -2,10 +2,17 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
-const configDir = path.join(os.homedir(), '.config', 'omx');
-const configFile = path.join(configDir, 'config.json');
+export function getConfigDir() {
+    return process.env.OMX_CONFIG_DIR || path.join(os.homedir(), '.config', 'omx');
+}
+
+export function getConfigFile() {
+    return path.join(getConfigDir(), 'config.json');
+}
 
 export function setConfig(key: string, value: string) {
+    const configDir = getConfigDir();
+    const configFile = getConfigFile();
     if (!fs.existsSync(configDir)) {
         fs.mkdirSync(configDir, { recursive: true, mode: 0o700 });
     }
@@ -20,6 +27,7 @@ export function setConfig(key: string, value: string) {
 }
 
 export function getConfig(key: string): string | undefined {
+    const configFile = getConfigFile();
     if (fs.existsSync(configFile)) {
         const config = JSON.parse(fs.readFileSync(configFile, 'utf-8'));
         return config[key];

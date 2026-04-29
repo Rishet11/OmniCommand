@@ -13,6 +13,7 @@ import { processDocument } from './engines/document.js';
 import { processImage } from './engines/image.js';
 import { processVideo } from './engines/video.js';
 import { getConfig } from './utils/config.js';
+import type { ActionType, BatchResult, BatchSummary, ProcessOptions } from './types.js';
 
 // Use createRequire to read our own package.json for versioning
 const require = createRequire(import.meta.url);
@@ -46,7 +47,7 @@ program
 function capitalize(str: string) { return str.charAt(0).toUpperCase() + str.slice(1); }
 
 // Grammatically correct action verb for spinner display
-function formatAction(verb: string): string {
+export function formatAction(verb: string): string {
     const lower = verb.toLowerCase();
     if (lower === 'trim') return 'Trimming';
     if (lower === 'resize') return 'Resizing';
@@ -56,14 +57,21 @@ function formatAction(verb: string): string {
     return capitalize(lower) + 'ing';
 }
 
-// Format typo suggestions — helps users with minor format misspellings
-function suggestFormat(typo: string): string | null {
+export function suggestFormat(typo: string): string | null {
     const known = ['jpg', 'jpeg', 'png', 'webp', 'avif', 'gif', 'mp4', 'mov', 'avi', 'mkv',
                    'webm', 'mp3', 'wav', 'aac', 'flac', 'm4a', 'pdf', 'docx', 'md', 'markdown', 'txt', 'html'];
     const lower = typo.toLowerCase();
+    
+    // First pass: exact matches
+    if (known.includes(lower)) return null;
+
+    // Second pass: substring matches
     for (const fmt of known) {
-        if (fmt === lower) return null; // exact match, no suggestion needed
         if (fmt.includes(lower) || lower.includes(fmt)) return fmt;
+    }
+
+    // Third pass: typo distance
+    for (const fmt of known) {
         if (Math.abs(fmt.length - lower.length) <= 2) {
             let diff = 0;
             const maxLen = Math.max(fmt.length, lower.length);
@@ -76,7 +84,35 @@ function suggestFormat(typo: string): string | null {
     return null;
 }
 
-async function executeEngine(inputFile: string, actionType: string, options: any) {
+export function summarizeResults(results: BatchResult[]): BatchSummary {
+    return {
+        total: results.length,
+        succeeded: results.filter((result) => result.success && !result.skipped).length,
+        failed: results.filter((result) => !result.success).length,
+        skipped: results.filter((result) => result.skipped).length,
+    };
+}
+
+function normalizeGlobalOptions(command: any) {
+    const opts = command.parent.opts();
+    return {
+        ...opts,
+        overwrite: opts.overwrite || opts.yes,
+    };
+}
+
+function splitNaturalArgs(args: string[], separator: string) {
+    const index = args.findIndex((arg) => arg.toLowerCase() === separator);
+    if (index <= 0 || index === args.length - 1) {
+        return null;
+    }
+    return {
+        inputFiles: args.slice(0, index),
+        rest: args.slice(index + 1),
+    };
+}
+
+async function executeEngine(inputFile: string, actionType: ActionType, options: ProcessOptions): Promise<BatchResult> {
     if (!options.quiet && !options.json && !options.dryRun) {
         console.log(chalk.gray(`\nAnalyzing ${inputFile}...`));
     }
@@ -108,7 +144,7 @@ async function executeEngine(inputFile: string, actionType: string, options: any
                 if (!options.quiet && !options.json) {
                     console.log(chalk.cyan(`Dry run: extension ${ext} is not supported by omx.`));
                 }
-                return;
+                return { inputFile, success: true, skipped: true };
             }
             throw new Error(`Extension ${ext} not supported. Try a document, image, or video.`);
         }
@@ -137,14 +173,13 @@ async function executeEngine(inputFile: string, actionType: string, options: any
         if (options.dryRun) {
             spinner.stop();
             if (options.json) {
-                console.log(JSON.stringify({ success: true, dryRun: true, inputFile, outputPath, action: actionType }, null, 2));
+                return { inputFile, outputPath, success: true };
             }
-            return;
+            return { inputFile, outputPath, success: true };
         }
 
         if (options.json) {
             spinner.stop(); // silent stop — no human text on stdout
-            console.log(JSON.stringify({ success: true, inputFile, outputPath, action: actionType }, null, 2));
         } else {
             spinner.succeed(chalk.green(`Output saved to: ${outputPath}`));
             // --verbose: show sizes and ratio
@@ -154,102 +189,251 @@ async function executeEngine(inputFile: string, actionType: string, options: any
                 console.log(chalk.gray(`  Input:  ${(inSize / 1024).toFixed(1)}KB  →  Output: ${(outSize / 1024).toFixed(1)}KB  (${(outSize / inSize * 100).toFixed(1)}%)`));
             }
         }
-    } catch (error: any) {
+        return { inputFile, outputPath, success: true };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
         spinner.fail(chalk.red(`${formatAction(actionType)} failed`));
         if (options.json) {
-            console.log(JSON.stringify({ success: false, error: error.message }, null, 2));
+            return { inputFile, success: false, error: message };
         } else {
-            console.error(chalk.red(`\n${error.message}\n`));
+            console.error(chalk.red(`\n${message}\n`));
         }
-        process.exit(1);
+        return { inputFile, success: false, error: message };
     }
+}
+
+async function runBatch(inputFiles: string[], actionType: ActionType, optionsForFile: (inputFile: string) => ProcessOptions) {
+    const json = optionsForFile(inputFiles[0]).json;
+    const quiet = optionsForFile(inputFiles[0]).quiet;
+    const results: BatchResult[] = [];
+
+    for (const inputFile of inputFiles) {
+        results.push(await executeEngine(inputFile, actionType, optionsForFile(inputFile)));
+    }
+
+    const summary = summarizeResults(results);
+    const success = summary.failed === 0;
+
+    if (json) {
+        if (inputFiles.length === 1) {
+            const [result] = results;
+            console.log(JSON.stringify({
+                success: result.success,
+                ...(optionsForFile(inputFiles[0]).dryRun ? { dryRun: true } : {}),
+                inputFile: result.inputFile,
+                ...(result.outputPath ? { outputPath: result.outputPath } : {}),
+                action: actionType,
+                ...(result.error ? { error: result.error } : {}),
+            }, null, 2));
+        } else {
+            console.log(JSON.stringify({
+                success,
+                ...(optionsForFile(inputFiles[0]).dryRun ? { dryRun: true } : {}),
+                action: actionType,
+                results,
+                summary,
+            }, null, 2));
+        }
+    } else if (!quiet && inputFiles.length > 1) {
+        console.log(chalk.bold(`\nBatch summary: ${summary.succeeded} succeeded, ${summary.failed} failed, ${summary.skipped} skipped (${summary.total} total).`));
+    }
+
+    if (!success) process.exit(1);
 }
 
 // --- EXTRACT COMMAND ---
 program
-  .command('extract <trackType> <separator> <inputFile>')
+  .command('extract <args...>')
   .description('Extract audio from a video file')
-  .action(async (trackType, separator, inputFile, options, command) => {
-    if (separator.toLowerCase() !== 'from') {
+  .action(async (args: string[], options, command) => {
+    const [trackType, separator, ...inputFiles] = args;
+    if (!trackType || !separator || separator.toLowerCase() !== 'from') {
         console.error(chalk.red(`\n✗ Invalid syntax. Use: omx extract <type> from <file>\n  Example: omx extract audio from video.mp4\n`));
         process.exit(2);
     }
     validateNodeVersion();
-    const globalOpts = command.parent.opts();
+    const globalOpts = normalizeGlobalOptions(command);
 
     if (trackType.toLowerCase() !== 'audio') {
         console.error(chalk.red(`\n✗ Only audio extraction is supported right now.\n  Use: omx extract audio from <file>\n`));
         process.exit(2);
     }
 
-    // Guard: extracting audio from an already-audio file is a no-op copy
-    const audioExts = ['.mp3', '.wav', '.aac', '.flac', '.m4a', '.ogg', '.opus'];
-    const inputExt = path.extname(inputFile).toLowerCase();
-    if (audioExts.includes(inputExt)) {
-        console.error(chalk.yellow(`\n⚠️  ${inputFile} is already an audio file.`));
-        console.error(chalk.yellow(`   Extract pulls audio from video files.`));
-        console.error(chalk.yellow(`   To convert formats: omx convert ${inputFile} to mp3\n`));
-        process.exit(0);
+    if (inputFiles.length === 0) {
+        console.error(chalk.red(`\n✗ Missing input file. Use: omx extract audio from <file>\n`));
+        process.exit(2);
     }
 
-    await executeEngine(inputFile, 'extract', { ...globalOpts, ...options, targetFormat: 'mp3' });
+    const audioExts = ['.mp3', '.wav', '.aac', '.flac', '.m4a', '.ogg', '.opus'];
+    const filtered = inputFiles.filter((inputFile) => {
+        const inputExt = path.extname(inputFile).toLowerCase();
+        if (!audioExts.includes(inputExt)) return true;
+        if (!globalOpts.quiet && !globalOpts.json) {
+            console.error(chalk.yellow(`\n⚠️  ${inputFile} is already an audio file.`));
+            console.error(chalk.yellow(`   Extract pulls audio from video files.`));
+            console.error(chalk.yellow(`   To convert formats: omx convert ${inputFile} to mp3\n`));
+        }
+        return false;
+    });
+    if (filtered.length === 0) process.exit(0);
+    await runBatch(filtered, 'extract', () => ({ ...globalOpts, ...options, actionType: 'extract', targetFormat: 'mp3' }));
   });
 
 // --- CONVERT COMMAND ---
 program
-  .command('convert <inputFile> <separator> <targetFormat>')
+  .command('convert <args...>')
   .description('Convert a document, image, or video to a different format')
   .option('--refine', 'Use AI Vision OCR to preserve complex layouts/scanned text')
-  .action(async (inputFile, separator, targetFormat, options, command) => {
-    if (separator.toLowerCase() !== 'to') {
+  .action(async (args: string[], options, command) => {
+    const parsed = splitNaturalArgs(args, 'to');
+    if (!parsed || parsed.rest.length !== 1) {
       console.error(chalk.red(`\n✗ Invalid syntax. Use: omx convert <file> to <format>\n  Example: omx convert report.pdf to markdown\n`));
       process.exit(2);
     }
     validateNodeVersion();
-    const globalOpts = command.parent.opts();
-    await executeEngine(inputFile, 'convert', { ...globalOpts, ...options, targetFormat });
+    const globalOpts = normalizeGlobalOptions(command);
+    const targetFormat = parsed.rest[0];
+    await runBatch(parsed.inputFiles, 'convert', () => ({ ...globalOpts, ...options, actionType: 'convert', targetFormat }));
   });
 
 // --- COMPRESS COMMAND ---
 program
-  .command('compress <inputFile> <separator> <targetAmount>')
+  .command('compress <args...>')
   .description('Compress a media file to a target size or percentage')
-  .action(async (inputFile, separator, targetAmount, options, command) => {
-    if (separator.toLowerCase() !== 'to') {
+  .action(async (args: string[], options, command) => {
+    const parsed = splitNaturalArgs(args, 'to');
+    if (!parsed || parsed.rest.length !== 1) {
         console.error(chalk.red(`\n✗ Invalid syntax. Use: omx compress <file> to <target>\n  Example: omx compress photo.png to 50%\n`));
         process.exit(2);
     }
     validateNodeVersion();
-    const globalOpts = command.parent.opts();
-    await executeEngine(inputFile, 'compress', { ...globalOpts, ...options, compressTarget: targetAmount });
+    const globalOpts = normalizeGlobalOptions(command);
+    const targetAmount = parsed.rest[0];
+    await runBatch(parsed.inputFiles, 'compress', () => ({ ...globalOpts, ...options, actionType: 'compress', compressTarget: targetAmount }));
   });
 
 // --- TRIM COMMAND ---
 program
-  .command('trim <inputFile> <fromWord> <startTime> <toWord> <endTime>')
+  .command('trim <args...>')
   .description('Trim a video or audio file')
-  .action(async (inputFile, fromWord, startTime, toWord, endTime, options, command) => {
-    if (fromWord.toLowerCase() !== 'from' || toWord.toLowerCase() !== 'to') {
+  .action(async (args: string[], options, command) => {
+    const fromIndex = args.findIndex((arg) => arg.toLowerCase() === 'from');
+    const toIndex = args.findIndex((arg) => arg.toLowerCase() === 'to');
+    if (fromIndex <= 0 || toIndex !== fromIndex + 2 || toIndex !== args.length - 2) {
         console.error(chalk.red(`\n✗ Invalid syntax. Use: omx trim <file> from <start> to <end>\n  Example: omx trim clip.mp4 from 0:30 to 1:45\n`));
         process.exit(2);
     }
     validateNodeVersion();
-    const globalOpts = command.parent.opts();
-    await executeEngine(inputFile, 'trim', { ...globalOpts, ...options, trimStart: startTime, trimEnd: endTime });
+    const globalOpts = normalizeGlobalOptions(command);
+    const inputFiles = args.slice(0, fromIndex);
+    const startTime = args[fromIndex + 1];
+    const endTime = args[toIndex + 1];
+    await runBatch(inputFiles, 'trim', (inputFile) => ({
+        ...globalOpts,
+        ...options,
+        actionType: 'trim',
+        trimStart: startTime,
+        trimEnd: endTime,
+        targetFormat: path.extname(inputFile).replace('.', ''),
+    }));
   });
 
 // --- RESIZE COMMAND ---
 program
-  .command('resize <inputFile> <separator> <targetSize>')
+  .command('resize <args...>')
   .description('Resize an image')
-  .action(async (inputFile, separator, targetSize, options, command) => {
-    if (separator.toLowerCase() !== 'to') {
+  .action(async (args: string[], options, command) => {
+    const parsed = splitNaturalArgs(args, 'to');
+    if (!parsed || parsed.rest.length !== 1) {
         console.error(chalk.red(`\n✗ Invalid syntax. Use: omx resize <file> to <targetSize>\n  Example: omx resize photo.png to 800px\n`));
         process.exit(2);
     }
     validateNodeVersion();
-    const globalOpts = command.parent.opts();
-    await executeEngine(inputFile, 'resize', { ...globalOpts, ...options, targetSize, targetFormat: path.extname(inputFile).replace('.', '') });
+    const globalOpts = normalizeGlobalOptions(command);
+    const targetSize = parsed.rest[0];
+    await runBatch(parsed.inputFiles, 'resize', (inputFile) => ({ ...globalOpts, ...options, actionType: 'resize', targetSize, targetFormat: path.extname(inputFile).replace('.', '') }));
+  });
+
+const completionScripts: Record<string, string> = {
+    bash: `# omx bash completion
+_omx_completion() {
+  local cur prev commands shells
+  COMPREPLY=()
+  cur="\${COMP_WORDS[COMP_CWORD]}"
+  prev="\${COMP_WORDS[COMP_CWORD-1]}"
+  commands="convert compress trim extract resize doctor config completion"
+  shells="bash zsh fish"
+  if [[ \${COMP_CWORD} -eq 1 ]]; then
+    COMPREPLY=( $(compgen -W "\${commands}" -- "\${cur}") )
+  elif [[ "\${COMP_WORDS[1]}" == "completion" ]]; then
+    COMPREPLY=( $(compgen -W "\${shells}" -- "\${cur}") )
+  elif [[ "\${prev}" == "to" ]]; then
+    COMPREPLY=( $(compgen -W "markdown md txt jpg jpeg png webp avif gif mp4 mov mkv webm mp3 wav aac flac" -- "\${cur}") )
+  fi
+}
+complete -F _omx_completion omx
+`,
+    zsh: `#compdef omx
+_omx() {
+  local -a commands formats shells
+  commands=(
+    'convert:convert a document, image, or video'
+    'compress:reduce file size'
+    'trim:trim audio or video'
+    'extract:extract audio from video'
+    'resize:resize an image'
+    'doctor:verify dependencies'
+    'config:get or set configuration'
+    'completion:print shell completion script'
+  )
+  formats=(markdown md txt jpg jpeg png webp avif gif mp4 mov mkv webm mp3 wav aac flac)
+  shells=(bash zsh fish)
+  _arguments \
+    '1:command:->command' \
+    '*::arg:->args'
+  case $state in
+    command) _describe 'commands' commands ;;
+    args)
+      if [[ $words[2] == completion ]]; then
+        _describe 'shells' shells
+      else
+        _files
+        compadd -- to from $formats
+      fi
+      ;;
+  esac
+}
+_omx "$@"
+`,
+    fish: `# omx fish completion
+complete -c omx -f -n '__fish_use_subcommand' -a 'convert' -d 'Convert a document, image, or video'
+complete -c omx -f -n '__fish_use_subcommand' -a 'compress' -d 'Reduce file size'
+complete -c omx -f -n '__fish_use_subcommand' -a 'trim' -d 'Trim audio or video'
+complete -c omx -f -n '__fish_use_subcommand' -a 'extract' -d 'Extract audio from video'
+complete -c omx -f -n '__fish_use_subcommand' -a 'resize' -d 'Resize an image'
+complete -c omx -f -n '__fish_use_subcommand' -a 'doctor' -d 'Verify dependencies'
+complete -c omx -f -n '__fish_use_subcommand' -a 'config' -d 'Get or set configuration'
+complete -c omx -f -n '__fish_use_subcommand' -a 'completion' -d 'Print shell completion script'
+complete -c omx -f -n '__fish_seen_subcommand_from completion' -a 'bash zsh fish'
+complete -c omx -f -a 'to from markdown md txt jpg jpeg png webp avif gif mp4 mov mkv webm mp3 wav aac flac'
+`,
+};
+
+export function getCompletionScript(shell: string): string | null {
+    return completionScripts[shell] ?? null;
+}
+
+// --- COMPLETION COMMAND ---
+program
+  .command('completion <shell>')
+  .description('Print shell completion script for bash, zsh, or fish')
+  .action((shell) => {
+    const script = getCompletionScript(shell.toLowerCase());
+    if (!script) {
+        console.error(chalk.red(`\n✗ Unsupported shell "${shell}". Use: omx completion bash|zsh|fish\n`));
+        process.exit(2);
+    }
+    process.stdout.write(script);
   });
 
 // --- DOCTOR COMMAND ---
@@ -309,7 +493,7 @@ program
   });
 
 // Helper to strictly enforce the >=20.3.0 Node rule programmatically
-function validateNodeVersion(logSuccess = false) {
+export function validateNodeVersion(logSuccess = false) {
     const [major, minor] = process.version.replace('v', '').split('.').map(Number);
     const isValid = major > 20 || (major === 20 && minor >= 3);
     
@@ -357,19 +541,21 @@ program
     process.exit(2);
   });
 
-// No-args: show friendly examples instead of Commander's error dump
-if (process.argv.length <= 2) {
-    console.log(`
-  omx — natural language file converter
+if (process.env.NODE_ENV !== 'test') {
+    // No-args: show friendly examples instead of Commander's error dump
+    if (process.argv.length <= 2) {
+        console.log(`
+      omx — natural language file converter
 
-    omx convert report.pdf to markdown
-    omx compress photo.png to 50%
-    omx trim clip.mp4 from 0:30 to 1:45
-    omx extract audio from video.mp4
+        omx convert report.pdf to markdown
+        omx compress photo.png to 50%
+        omx trim clip.mp4 from 0:30 to 1:45
+        omx extract audio from video.mp4
 
-  Run omx --help for all commands and flags.
-`);
-    process.exit(0);
+      Run omx --help for all commands and flags.
+    `);
+        process.exit(0);
+    }
+
+    await program.parseAsync(process.argv);
 }
-
-await program.parseAsync(process.argv);
