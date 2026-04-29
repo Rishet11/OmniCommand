@@ -21,7 +21,7 @@ Requires Node.js ≥ 20.3.0.
 
 ## Commands
 
-### `omx convert <file> to <format>`
+### `omx convert <file...> to <format>`
 Convert a file between formats.
 
 ```bash
@@ -43,7 +43,7 @@ Additional option: `--refine` uploads to Gemini Vision OCR for scanned PDFs.
 
 ---
 
-### `omx compress <file> to <target>`
+### `omx compress <file...> to <target>`
 Reduce file size.
 
 ```bash
@@ -60,7 +60,7 @@ Target formats:
 
 ---
 
-### `omx trim <file> from <start> to <end>`
+### `omx trim <file...> from <start> to <end>`
 Trim video or audio between timestamps.
 
 ```bash
@@ -72,7 +72,7 @@ Timestamp format: `HH:MM:SS` or `M:SS`. Uses FFmpeg seek (lossless where possibl
 
 ---
 
-### `omx extract audio from <file>`
+### `omx extract audio from <file...>`
 Extract audio track from a video file as MP3.
 
 ```bash
@@ -83,7 +83,7 @@ omx extract audio from recording.mp4
 
 ---
 
-### `omx resize <file> to <size>`
+### `omx resize <file...> to <size>`
 Resize an image while preserving aspect ratio.
 
 ```bash
@@ -92,6 +92,20 @@ omx resize banner.jpg to 1920px
 ```
 
 Uses `fit: 'inside'` — never upscales, never distorts.
+
+---
+
+## Batch Operations
+
+Commands accept multiple files before `to` or `from`.
+
+```bash
+omx compress *.png to 80% --dry-run
+omx convert ./docs/*.pdf to markdown --json
+omx resize image-1.jpg image-2.jpg to 1200px
+```
+
+Batch jobs continue after per-file failures. Human output ends with a summary. JSON batch output is one object with `results` and `summary`.
 
 ---
 
@@ -127,6 +141,17 @@ omx config set GEMINI_API_KEY your-api-key-here
 ```
 
 Config is stored at `~/.config/omx/config.json` with `0600` permissions.
+
+---
+
+### `omx completion <shell>`
+Print shell completions for `bash`, `zsh`, or `fish`.
+
+```bash
+omx completion bash
+omx completion zsh
+omx completion fish
+```
 
 ---
 
@@ -179,6 +204,32 @@ When `--json` is set, stdout is **only** the JSON object — no prefix, no suffi
 }
 ```
 
+### Batch
+```json
+{
+  "success": false,
+  "action": "compress",
+  "results": [
+    {
+      "inputFile": "/path/to/a.png",
+      "outputPath": "/path/to/a_compress.webp",
+      "success": true
+    },
+    {
+      "inputFile": "/path/to/missing.png",
+      "success": false,
+      "error": "File not found: /path/to/missing.png"
+    }
+  ],
+  "summary": {
+    "total": 2,
+    "succeeded": 1,
+    "failed": 1,
+    "skipped": 0
+  }
+}
+```
+
 ---
 
 ## Exit Codes
@@ -197,7 +248,7 @@ Output files are written next to the input file with a suffix indicating the act
 
 | Action | Suffix |
 |---|---|
-| convert | `_conv` |
+| convert | `_convert` |
 | compress | `_compress` |
 | trim | `_trim` |
 | extract | `_extract` |
@@ -218,10 +269,12 @@ node /path/to/omx-cmd/dist/mcp.js
 
 **Transport:** stdio
 
+Gemini OCR and the MCP SDK are optional/lazy-loaded. Standard CLI conversion does not require them. If optional dependencies were omitted, install with `npm install -g omx-cmd --include=optional`.
+
 **Tools exposed:**
-- `convert_file` — convert between formats
-- `compress_file` — reduce file size
-- `trim_media` — trim video/audio by timestamp
+- `convert` — convert between formats
+- `compress` — reduce file size
+- `trim` — trim video/audio by timestamp
 
 Each tool accepts `inputFile`, `targetFormat` (or `targetAmount`/`startTime`+`endTime`), and optional `refine` flag.
 

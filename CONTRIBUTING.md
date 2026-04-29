@@ -19,7 +19,7 @@ npm run build
 node dist/index.js doctor
 ```
 
-The `doctor` command will tell you which optional dependencies (Pandoc) are missing.
+The `doctor` command will tell you which optional dependencies are missing. Pandoc is optional for non-PDF document conversion; Gemini OCR and MCP SDK support are optional/lazy-loaded.
 
 ---
 
@@ -35,7 +35,7 @@ npm test
 npm run test:watch
 ```
 
-All 20 tests should pass. If any fail before your change, that's a bug — please open an issue.
+All tests should pass. If any fail before your change, that's a bug — please open an issue.
 
 ---
 
@@ -46,6 +46,8 @@ OmniCommand/
 ├── cli/                   # npm package (omx-cmd)
 │   ├── src/
 │   │   ├── index.ts       # CLI entry point (Commander.js commands)
+│   │   ├── lib.ts         # Public TypeScript exports
+│   │   ├── types.ts       # Shared engine and batch interfaces
 │   │   ├── mcp.ts         # MCP server for agentic integration
 │   │   ├── engines/
 │   │   │   ├── image.ts   # Sharp image processing
@@ -65,7 +67,7 @@ OmniCommand/
 1. **Create a branch**: `git checkout -b feat/my-feature`
 2. **Make changes** in `cli/src/`
 3. **Build**: `npm run build` (runs TypeScript compiler)
-4. **Test**: `npm test` (must pass all 20 tests)
+4. **Test**: `npm test`
 5. **Submit a PR** — include a description of what changed and why
 
 ---

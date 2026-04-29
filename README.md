@@ -5,130 +5,185 @@
 [![node](https://img.shields.io/node/v/omx-cmd.svg?style=flat-square)](https://nodejs.org)
 [![downloads](https://img.shields.io/npm/dw/omx-cmd.svg?style=flat-square)](https://www.npmjs.com/package/omx-cmd)
 
-The terminal tool for every format. **OmniCommand** uses natural language terminal syntax to convert, compress, trim, and extract common document, image, and media workflows — **offline by default**.
+OmniCommand is a local-first file conversion CLI. The npm package is `omx-cmd`; the installed terminal command is `omx`.
 
-No more memorizing complex FFmpeg flags, ImageMagick syntax, or Pandoc configurations. Use plain commands and let the CLI route them.
+It routes documents, images, audio, and video through the right engine with plain commands like `omx convert report.pdf to markdown`, without requiring users to memorize FFmpeg, Sharp, Pandoc, or PDF extraction flags.
 
----
-
-## Why OmniCommand?
-
-| Tool | Scope | Offline | CLI | Natural Language |
-|---|---|---|---|---|
-| `fluent-ffmpeg` | Video only | ✅ | ❌ (library) | ❌ |
-| `sharp` | Images only | ✅ | ❌ (library) | ❌ |
-| `pandoc` | Documents only | ✅ | ✅ | ❌ |
-| `ai-ffmpeg-cli` | Video only | ❌ | ✅ | ✅ |
-| **`omx`** | **All three** | **✅** | **✅** | **✅** |
-
-`fluent-ffmpeg` was archived in May 2025. No npm package unifies document, image, and media conversion under one CLI with plain-language commands, offline. OmniCommand fills that gap.
-
----
-
-## 🚀 Installation
-
-OmniCommand is published as `omx-cmd` to avoid namespace conflicts, but the executable binds globally as `omx`.
+## Installation
 
 ```bash
 npm install -g omx-cmd
-```
-
-*Requires Node.js >= 20.3.0*
-
-Check that your installation was successful and that all engines are ready:
-```bash
 omx doctor
 ```
 
----
+Requires Node.js >= 20.3.0. Standard conversion is free and offline by default.
 
-## 💻 Usage
+## Commands
 
-OmniCommand enforces strict "Natural Language" separators (`to`, `from`).
-
-### 1. Convert Anything
-Seamlessly convert document formats, video codecs, or image extensions.
 ```bash
+# Convert
 omx convert report.pdf to markdown
 omx convert photo.png to webp
 omx convert footage.mov to mp4
-```
 
-### 2. Compress Media
-Intelligently shrinks file sizes using target percentages or fixed sizes.
-```bash
+# Compress
 omx compress video.mp4 to 50%
-omx compress photo.png to 50%    # Auto-converts PNG → WebP for real compression
-```
+omx compress photo.png to 50%
+omx compress archive.pdf to 200kb
 
-### 3. Trim Audio & Video
-Lossless, lightning-fast media trimming without re-encoding overhead.
-```bash
+# Trim and extract
 omx trim podcast.mp3 from 0:30 to 1:45
-omx trim gameplay.mp4 from 10:00 to 12:30
-```
+omx extract audio from recording.mp4
 
-### 4. Extract Audio
-Pull audio out of a video file as an MP3.
-```bash
-omx extract audio from video.mp4
-```
-
-### 5. Resize Images
-Resize an image while preserving its aspect ratio.
-```bash
+# Resize
 omx resize photo.png to 800px
 ```
 
----
+PNG compression automatically writes WebP output because PNG is lossless and usually cannot be meaningfully recompressed as PNG.
 
-## ⚙️ Features & Engines
+## Batch Operations
 
-OmniCommand routes your files natively based on their format:
+All file-processing commands accept multiple input files before the natural-language separator:
 
-* **Video & Audio (`ffmpeg-static`)**: FFmpeg ships with the CLI through `ffmpeg-static`, so you do not need a separate global FFmpeg install for the default workflows.
-* **Images (`sharp`)**: Blazing fast image processing utilizing pre-built Rust/C++ binaries. Fully supports modern formats like `.avif` and `.webp`.
-* **Documents (`pdfjs-dist` + `pandoc`)**: PDFs use local text extraction by default, and non-PDF documents use Pandoc when it is installed locally.
+```bash
+omx compress *.png to 80% --dry-run
+omx convert ./docs/*.pdf to markdown --json
+omx resize image-1.jpg image-2.jpg to 1200px
+omx trim *.mp4 from 0:10 to 0:45
+omx extract audio from *.mov
+```
 
----
+Batch jobs continue when one file fails, then print a summary. Exit code is `0` only when all files succeed or the command is a graceful no-op; it is `1` when any runtime failure occurs.
 
-## 🧠 Scanned PDFs & AI OCR (`--refine`)
+## Supported Formats
 
-Local document conversion tools struggle on scanned PDFs out-of-the-box. OmniCommand ships with a preflight scanner that detects image-only or complex two-column layouts before conversion.
+| Engine | Input formats | Output formats |
+|---|---|---|
+| Sharp | jpg, jpeg, png, webp, avif, gif, tiff, bmp, ico | jpg, png, webp, avif, gif |
+| FFmpeg | mp4, mov, avi, mkv, webm, flv, 3gp, mp3, wav, aac, flac, m4a, ogg, opus | FFmpeg-supported formats |
+| pdfjs-dist | pdf | md, txt |
+| Pandoc | docx, doc, pptx, xlsx, rtf, txt, md | Pandoc-supported formats |
 
-If it detects a scanned document, you can bypass local limitations using the `--refine` flag. This uploads the document to Gemini for richer extraction when you want that networked path.
+Pandoc is optional and only needed for non-PDF document conversion. Local PDF conversion supports Markdown/text extraction. Use `--refine` for scanned PDFs or richer layout recovery.
 
-**Setup AI Refinement:**
-1. Get a free Gemini API key from [Google AI Studio](https://aistudio.google.com/)
-2. Set it in your global config:
+## AI OCR and Optional Packages
+
+`--refine` uploads the document to Gemini Vision OCR. It is opt-in and requires a Gemini API key:
+
 ```bash
 omx config set GEMINI_API_KEY your-api-key-here
-```
-3. Run the conversion:
-```bash
 omx convert scanned-report.pdf to markdown --refine
 ```
 
----
+Gemini and MCP dependencies are optional/lazy-loaded. If your package manager omits optional dependencies and you need AI OCR or MCP, install with:
 
-## 🛠️ Additional Flags
+```bash
+npm install -g omx-cmd --include=optional
+```
 
-| Flag | Description |
+## Flags
+
+| Flag | Effect |
 |---|---|
-| `--json` | Structured JSON output (no spinners, for scripts/CI) |
-| `--dry-run` | Preview what would run without writing files |
-| `--quiet` | Suppress CLI output and spinners |
-| `--verbose` | Show input/output sizes and compression ratio |
-| `--overwrite` | Automatically overwrite existing output files |
-| `--no-color` | Disable ANSI colour (also respects `NO_COLOR` env var) |
+| `--json` | JSON-only stdout for scripts and agents |
+| `--quiet` | Suppress progress and human output |
+| `--overwrite`, `-y` | Allow overwriting existing output files |
+| `--dry-run` | Preview output paths/commands without writing files |
+| `--verbose` | Show input/output sizes after completion |
+| `--no-color` | Disable ANSI color; also respects `NO_COLOR` |
+| `--refine` | Convert PDFs through Gemini OCR; convert command only |
 
----
+Long FFmpeg jobs show terminal progress with percent, output size, and ETA when duration is known. Progress is suppressed for `--json`, `--quiet`, non-TTY output, and dry runs.
 
-## 📂 Repository Developer Guide
+## JSON Output
 
-If you are downloading this source code to edit the project, note that it contains two parts:
+Single-file JSON success:
 
-1. **The CLI tool** is located in the `/cli` folder. To build it locally, run `cd cli && npm install && npm run build`.
-2. **The Landing Page (Website)** is located in the root folder. To run the website locally, run `npm install && npm run dev`.
+```json
+{
+  "success": true,
+  "inputFile": "/path/to/input.png",
+  "outputPath": "/path/to/input_compress.webp",
+  "action": "compress"
+}
+```
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) to get started contributing.
+Batch JSON success:
+
+```json
+{
+  "success": true,
+  "action": "compress",
+  "results": [
+    {
+      "inputFile": "/path/to/a.png",
+      "outputPath": "/path/to/a_compress.webp",
+      "success": true
+    }
+  ],
+  "summary": {
+    "total": 1,
+    "succeeded": 1,
+    "failed": 0,
+    "skipped": 0
+  }
+}
+```
+
+## Shell Completions
+
+```bash
+# bash
+omx completion bash >> ~/.bashrc
+
+# zsh
+omx completion zsh > ~/.zsh/completions/_omx
+
+# fish
+omx completion fish > ~/.config/fish/completions/omx.fish
+```
+
+## Output Naming
+
+Outputs are written next to the input file:
+
+| Action | Suffix |
+|---|---|
+| convert | `_convert` |
+| compress | `_compress` |
+| trim | `_trim` |
+| extract | `_extract` |
+| resize | `_resize` |
+
+Example: `photo.png` with `omx compress photo.png to 50%` writes `photo_compress.webp`.
+
+## Exit Codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Success or graceful no-op |
+| `1` | Runtime error, dependency failure, corrupt file, or partial batch failure |
+| `2` | User input error such as bad syntax or missing arguments |
+
+## MCP Server
+
+OmniCommand includes an optional MCP server for agentic integrations:
+
+```bash
+node /path/to/omx-cmd/dist/mcp.js
+```
+
+Transport is stdio. Tools exposed: `convert`, `compress`, and `trim`.
+
+## Developer Notes
+
+The CLI package lives in `cli/`. The root React/Vite app is a marketing/demo page, not a hosted converter product.
+
+```bash
+cd cli
+npm install
+npm run build
+npm test
+```
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for contributor guidance.

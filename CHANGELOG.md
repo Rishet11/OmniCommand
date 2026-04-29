@@ -8,6 +8,38 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). This pr
 
 ## [Unreleased]
 
+### Added
+- First-class batch operations for convert, compress, trim, extract, and resize commands.
+- Shell completion generation for bash, zsh, and fish via `omx completion <shell>`.
+- FFmpeg progress parsing for long media jobs with percent, ETA, and output size when available.
+- Exported TypeScript interfaces and a stable package library entrypoint.
+
+### Changed
+- Gemini OCR and MCP SDK packages are now optional/lazy-loaded so standard offline conversion installs stay lighter.
+- Documentation now consistently distinguishes OmniCommand the product, `omx-cmd` the npm package, and `omx` the terminal binary.
+- The root website is documented as a landing/demo page, not a hosted converter UI.
+
+---
+
+## [1.0.3] — 2026-04-29
+
+### Fixed
+- **Audio-only compression is now handled correctly.** Previously, compressing `.mp3` or `.wav` files would incorrectly apply the `-c:v libx264` video codec, leading to processing failures or corrupted output. Audio files now use dedicated bitrate-targeted compression paths (`-b:a`).
+- **Improved TXT → PDF output layout.** Reduced default margins from 1.0in to 0.75in and added a `1.15` line-stretch to ensure generated PDFs fill the page more effectively and are more readable.
+- **CLI integration test race conditions resolved.** Fixed a critical testing bug where parallel Vitest workers were intermittently deleting the `dist/` folder during integration tests.
+- **`NODE_ENV=test` command bypass fixed.** Integration tests now correctly execute the CLI logic by explicitly clearing the `test` environment flag that was causing index commands to be skipped.
+- **`omx compress` now supports `kb` targets** in addition to `mb` and `%` for more granular control over output sizes.
+- **Strict clamping for compression percentages.** Percentage targets are now strictly clamped between 1% and 100% to prevent engine crashes on invalid inputs.
+
+### Added
+- **Major Test Suite Expansion.** Reached **125 tests** (up from ~60) covering extreme edge cases:
+  - Unicode and special character file names (`문서.pdf`, `photo (1).png`).
+  - Zero-byte and corrupted file handling.
+  - Directory-as-input protection.
+  - Transparent PNG → JPEG flattening.
+  - Double extension handling (`file.test.image.png`).
+- **Comprehensive coverage of global flags** (`--json`, `--dry-run`, `--quiet`, `--verbose`) across all commands to ensure consistent behavior.
+
 ---
 
 ## [1.0.2] — 2026-04-27

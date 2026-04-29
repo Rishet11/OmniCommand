@@ -132,7 +132,7 @@ export function Terminal() {
              addLine('Refining text extraction with AI Vision OCR (cost: ~$0.04)...');
              await new Promise(r => setTimeout(r, 1500));
              addLine('Vision OCR complete. Layout reconstructed.');
-             await simulateProgress('Converting scanned-report.pdf...', 'Output saved to: scanned-report_conv.md');
+             await simulateProgress('Converting scanned-report.pdf...', 'Output saved to: scanned-report_convert.md');
           } else {
              addLine('✗ This PDF appears to be scanned or image-based.');
              addLine('  Local text extraction cannot recover layout or images.');
@@ -148,7 +148,7 @@ export function Terminal() {
            addLine('⚠️ Warning: This PDF appears to use a two-column layout.');
            addLine('  Layouts may be disrupted during Pandoc conversion.');
            addLine('  Consider using --refine to let AI reconstruct the document structure.');
-           await simulateProgress('Converting two-column.pdf...', 'Output saved to: two-column_conv.md');
+           await simulateProgress('Converting two-column.pdf...', 'Output saved to: two-column_convert.md');
            break;
         }
 
@@ -160,9 +160,9 @@ export function Terminal() {
           } else {
              addLine('Warning: PDF text extraction preserves words, but not page layout.');
           }
-          await simulateProgress('Converting report.pdf...', 'Output saved to: report_conv.md');
+          await simulateProgress('Converting report.pdf...', 'Output saved to: report_convert.md');
         } else {
-          addLine('Output saved to: file_conv.ext');
+          addLine('Output saved to: file_convert.ext');
           setIsProcessing(false);
         }
         break;
@@ -177,7 +177,7 @@ Would execute: ffmpeg -n -i ${inputFile} -c:v libx264 -preset fast -crf 28 ${str
         } else if (cmd.includes('video.mp4')) {
           await simulateProgress('Compressing video.mp4...', 'Output saved to: video_compress.mp4');
         } else {
-          addLine('Output saved to: file_conv.ext');
+          addLine('Output saved to: file_convert.ext');
           setIsProcessing(false);
         }
         break;
