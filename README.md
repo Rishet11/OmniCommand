@@ -1,6 +1,6 @@
 # OmniCommand (`omx`)
 
-![OmniCommand Terminal Mockup](./assets/cli_mockup.png)
+![OmniCommand Terminal Mockup](./assets/hero.png)
 
 [![npm version](https://img.shields.io/npm/v/omx-cmd.svg?style=flat-square)](https://www.npmjs.com/package/omx-cmd)
 [![license](https://img.shields.io/npm/l/omx-cmd.svg?style=flat-square)](https://github.com/Rishet11/OmniCommand/blob/main/LICENSE)
@@ -18,8 +18,6 @@ It routes documents, images, audio, and video through the right engine with plai
 npm install -g omx-cmd
 omx doctor
 ```
-
-![omx doctor mockup](./assets/mockup_doctor.png)
 
 Requires Node.js >= 20.3.0. Standard conversion is free and offline by default.
 
@@ -44,8 +42,6 @@ omx extract audio from recording.mp4
 omx resize photo.png to 800px
 ```
 
-![omx compress mockup](./assets/mockup_compress.png)
-
 PNG compression automatically writes WebP output because PNG is lossless and usually cannot be meaningfully recompressed as PNG.
 
 ## Batch Operations
@@ -60,19 +56,10 @@ omx trim *.mp4 from 0:10 to 0:45
 omx extract audio from *.mov
 ```
 
+
 Batch jobs continue when one file fails, then print a summary. Exit code is `0` only when all files succeed or the command is a graceful no-op; it is `1` when any runtime failure occurs.
 
-![omx batch mockup](./assets/mockup_batch.png)
-
-
 ## Supported Formats
-
-<p align="center">
-  <img src="./assets/icon_image.png" width="100" alt="Images" />
-  <img src="./assets/icon_video.png" width="100" alt="Video" />
-  <img src="./assets/icon_audio.png" width="100" alt="Audio" />
-  <img src="./assets/icon_doc.png" width="100" alt="Documents" />
-</p>
 
 
 | Engine | Input formats | Output formats |
