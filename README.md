@@ -1,6 +1,6 @@
 # OmniCommand (`omx`)
 
-![OmniCommand Terminal Mockup](/Users/rishetmehra/.gemini/antigravity/brain/507bc9b8-6294-4fd5-961a-4f48f7d4e181/omnicommand_hero_v3_multi_1777487185381.png)
+![OmniCommand Terminal Mockup](./assets/hero.png)
 
 [![npm version](https://img.shields.io/npm/v/omx-cmd.svg?style=flat-square)](https://www.npmjs.com/package/omx-cmd)
 [![license](https://img.shields.io/npm/l/omx-cmd.svg?style=flat-square)](https://github.com/Rishet11/OmniCommand/blob/main/LICENSE)
