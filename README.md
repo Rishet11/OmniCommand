@@ -11,12 +11,6 @@ OmniCommand is a local-first file conversion CLI. The npm package is `omx-cmd`; 
 
 It routes documents, images, audio, and video through the right engine with plain commands like `omx convert report.pdf to markdown`, without requiring users to memorize FFmpeg, Sharp, Pandoc, or PDF extraction flags.
 
-## 🚀 How it Works
-
-![OmniCommand Workflow](./assets/workflow_diagram.png)
-
-OmniCommand acts as a smart orchestrator that analyzes your input files and automatically selects the most efficient engine (Sharp for images, FFmpeg for media, etc.) to perform the task.
-
 
 ## Installation
 
@@ -24,6 +18,8 @@ OmniCommand acts as a smart orchestrator that analyzes your input files and auto
 npm install -g omx-cmd
 omx doctor
 ```
+
+![omx doctor mockup](./assets/mockup_doctor.png)
 
 Requires Node.js >= 20.3.0. Standard conversion is free and offline by default.
 
@@ -48,6 +44,8 @@ omx extract audio from recording.mp4
 omx resize photo.png to 800px
 ```
 
+![omx compress mockup](./assets/mockup_compress.png)
+
 PNG compression automatically writes WebP output because PNG is lossless and usually cannot be meaningfully recompressed as PNG.
 
 ## Batch Operations
@@ -64,12 +62,17 @@ omx extract audio from *.mov
 
 Batch jobs continue when one file fails, then print a summary. Exit code is `0` only when all files succeed or the command is a graceful no-op; it is `1` when any runtime failure occurs.
 
-![Batch Processing Illustration](./assets/batch_processing.png)
+![omx batch mockup](./assets/mockup_batch.png)
 
 
 ## Supported Formats
 
-![Supported Formats Grid](./assets/features_grid.png)
+<p align="center">
+  <img src="./assets/icon_image.png" width="100" alt="Images" />
+  <img src="./assets/icon_video.png" width="100" alt="Video" />
+  <img src="./assets/icon_audio.png" width="100" alt="Audio" />
+  <img src="./assets/icon_doc.png" width="100" alt="Documents" />
+</p>
 
 
 | Engine | Input formats | Output formats |
