@@ -2,8 +2,6 @@
 
 This document provides a detailed reference for the OmniCommand (`omx`) CLI, its Model Context Protocol (MCP) server, and the programmatic TypeScript API.
 
-![OmniCommand Workflow](./assets/workflow_diagram.png)
-
 
 ---
 
