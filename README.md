@@ -1,6 +1,6 @@
 # OmniCommand (`omx`)
 
-![OmniCommand Terminal Mockup](./assets/hero.png)
+![OmniCommand Terminal Mockup](./assets/cli_mockup.png)
 
 [![npm version](https://img.shields.io/npm/v/omx-cmd.svg?style=flat-square)](https://www.npmjs.com/package/omx-cmd)
 [![license](https://img.shields.io/npm/l/omx-cmd.svg?style=flat-square)](https://github.com/Rishet11/OmniCommand/blob/main/LICENSE)
@@ -10,6 +10,13 @@
 OmniCommand is a local-first file conversion CLI. The npm package is `omx-cmd`; the installed terminal command is `omx`.
 
 It routes documents, images, audio, and video through the right engine with plain commands like `omx convert report.pdf to markdown`, without requiring users to memorize FFmpeg, Sharp, Pandoc, or PDF extraction flags.
+
+## 🚀 How it Works
+
+![OmniCommand Workflow](./assets/workflow_diagram.png)
+
+OmniCommand acts as a smart orchestrator that analyzes your input files and automatically selects the most efficient engine (Sharp for images, FFmpeg for media, etc.) to perform the task.
+
 
 ## Installation
 
@@ -57,7 +64,13 @@ omx extract audio from *.mov
 
 Batch jobs continue when one file fails, then print a summary. Exit code is `0` only when all files succeed or the command is a graceful no-op; it is `1` when any runtime failure occurs.
 
+![Batch Processing Illustration](./assets/batch_processing.png)
+
+
 ## Supported Formats
+
+![Supported Formats Grid](./assets/features_grid.png)
+
 
 | Engine | Input formats | Output formats |
 |---|---|---|
