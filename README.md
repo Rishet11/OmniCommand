@@ -1,5 +1,7 @@
 # OmniCommand (`omx`)
 
+![OmniCommand Terminal Mockup](/Users/rishetmehra/.gemini/antigravity/brain/507bc9b8-6294-4fd5-961a-4f48f7d4e181/omnicommand_hero_v3_multi_1777487185381.png)
+
 [![npm version](https://img.shields.io/npm/v/omx-cmd.svg?style=flat-square)](https://www.npmjs.com/package/omx-cmd)
 [![license](https://img.shields.io/npm/l/omx-cmd.svg?style=flat-square)](https://github.com/Rishet11/OmniCommand/blob/main/LICENSE)
 [![node](https://img.shields.io/node/v/omx-cmd.svg?style=flat-square)](https://nodejs.org)
@@ -175,7 +177,13 @@ node /path/to/omx-cmd/dist/mcp.js
 
 Transport is stdio. Tools exposed: `convert`, `compress`, and `trim`.
 
-## Developer Notes
+## 📖 Advanced Usage
+
+For detailed information on the Programmatic API, MCP Server setup, and full CLI flag reference, see the **[DOCS.md](./DOCS.md)**.
+
+---
+
+## 📂 Developer Notes
 
 The CLI package lives in `cli/`. The root React/Vite app is a marketing/demo page, not a hosted converter product.
 
