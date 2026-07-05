@@ -31,6 +31,13 @@ const outputs: string[] = [];
 
 // Create small fixture images used in several tests
 beforeEach(async () => {
+    // Primary 100×100 opaque PNG — used across the conversion/compression suite
+    if (!fs.existsSync(TEST_IMAGE)) {
+        await sharp({
+            create: { width: 100, height: 100, channels: 3, background: { r: 100, g: 150, b: 200 } }
+        }).png().toFile(TEST_IMAGE);
+    }
+
     // Tiny 1×1 white PNG — used for "already optimized" warning test
     if (!fs.existsSync(TINY_PNG)) {
         await sharp({
