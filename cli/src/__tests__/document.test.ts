@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest';
+import { describe, it, expect, afterEach, vi, beforeEach, beforeAll } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { processDocument, preflightPDF } from '../engines/document.js';
@@ -33,6 +33,15 @@ const FIXTURES_DIR = path.resolve('./');
 const TEST_PDF = path.join(FIXTURES_DIR, 'test.pdf');
 const TEST_TXT = path.join(FIXTURES_DIR, 'test.txt');
 const TEST_DOCX = path.join(FIXTURES_DIR, 'test.docx');
+
+// Materialize the working-dir test files from committed fixtures. The test.*
+// names are gitignored (test*.*), so they must be created on a clean checkout.
+const COMMITTED = path.join(FIXTURES_DIR, 'src', '__tests__', 'fixtures');
+beforeAll(() => {
+    if (!fs.existsSync(TEST_PDF)) fs.copyFileSync(path.join(COMMITTED, 'table.pdf'), TEST_PDF);
+    if (!fs.existsSync(TEST_TXT)) fs.copyFileSync(path.join(COMMITTED, 'unicode.txt'), TEST_TXT);
+    if (!fs.existsSync(TEST_DOCX)) fs.copyFileSync(path.join(COMMITTED, 'unicode.docx'), TEST_DOCX);
+});
 
 const outputs: string[] = [];
 afterEach(() => {

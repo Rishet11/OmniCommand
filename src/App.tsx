@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Terminal } from './components/Terminal';
 import { Terminal as TerminalIcon, Cpu, Shield, Zap, FileJson, FileText, Share2 } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -192,7 +192,7 @@ omx convert ./docs/*.pdf to markdown --json`} />
   );
 }
 
-function FeatureCard({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
+function FeatureCard({ icon, title, description }: { icon: ReactNode, title: string, description: string }) {
   return (
     <div className="group border-t-[3px] border-black pt-6">
       <div className="mb-4 text-black/50">

@@ -1,5 +1,7 @@
 # OmniCommand (`omx`)
 
+![OmniCommand Terminal Mockup](./assets/hero.png)
+
 [![npm version](https://img.shields.io/npm/v/omx-cmd.svg?style=flat-square)](https://www.npmjs.com/package/omx-cmd)
 [![license](https://img.shields.io/npm/l/omx-cmd.svg?style=flat-square)](https://github.com/Rishet11/OmniCommand/blob/main/LICENSE)
 [![node](https://img.shields.io/node/v/omx-cmd.svg?style=flat-square)](https://nodejs.org)
@@ -8,6 +10,7 @@
 OmniCommand is a local-first file conversion CLI. The npm package is `omx-cmd`; the installed terminal command is `omx`.
 
 It routes documents, images, audio, and video through the right engine with plain commands like `omx convert report.pdf to markdown`, without requiring users to memorize FFmpeg, Sharp, Pandoc, or PDF extraction flags.
+
 
 ## Installation
 
@@ -53,9 +56,11 @@ omx trim *.mp4 from 0:10 to 0:45
 omx extract audio from *.mov
 ```
 
+
 Batch jobs continue when one file fails, then print a summary. Exit code is `0` only when all files succeed or the command is a graceful no-op; it is `1` when any runtime failure occurs.
 
 ## Supported Formats
+
 
 | Engine | Input formats | Output formats |
 |---|---|---|
@@ -165,6 +170,15 @@ Example: `photo.png` with `omx compress photo.png to 50%` writes `photo_compress
 | `1` | Runtime error, dependency failure, corrupt file, or partial batch failure |
 | `2` | User input error such as bad syntax or missing arguments |
 
+## Known Limitations
+
+Local PDF text extraction reads the text layer embedded in the PDF. Some PDFs do not store enough information to recover everything:
+
+- Complex scripts (Hindi, Chinese, Arabic): printed PDFs often embed these glyphs without unicode mappings, so conjuncts or whole characters can be lost. Arabic can also come out in reversed visual order.
+- Scanned PDFs: image-only pages have no text layer to extract.
+
+The CLI prints a warning when it detects lost characters. Workaround: run with `--refine` to use AI vision extraction, which reads the rendered page instead of the text layer.
+
 ## MCP Server
 
 OmniCommand includes an optional MCP server for agentic integrations:
@@ -175,7 +189,13 @@ node /path/to/omx-cmd/dist/mcp.js
 
 Transport is stdio. Tools exposed: `convert`, `compress`, and `trim`.
 
-## Developer Notes
+## 📖 Advanced Usage
+
+For detailed information on the Programmatic API, MCP Server setup, and full CLI flag reference, see the **[DOCS.md](./DOCS.md)**.
+
+---
+
+## 📂 Developer Notes
 
 The CLI package lives in `cli/`. The root React/Vite app is a marketing/demo page, not a hosted converter product.
 

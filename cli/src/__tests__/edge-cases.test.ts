@@ -2,10 +2,21 @@ import { describe, it, expect, afterEach, beforeAll } from 'vitest';
 import { spawnSync, execSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
+import sharp from 'sharp';
 
 const CLI = path.resolve('./dist/index.js');
 const FIXTURES_DIR = path.resolve('./');
+const TEST_IMAGE = path.join(FIXTURES_DIR, 'test_image.png');
 const outputs: string[] = [];
+
+beforeAll(async () => {
+    // Base image copied under various names by the edge-case tests
+    if (!fs.existsSync(TEST_IMAGE)) {
+        await sharp({
+            create: { width: 100, height: 100, channels: 3, background: { r: 100, g: 150, b: 200 } }
+        }).png().toFile(TEST_IMAGE);
+    }
+});
 
 afterEach(() => {
     for (const f of outputs) {
