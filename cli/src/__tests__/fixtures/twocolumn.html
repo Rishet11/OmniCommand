@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Two Column Layout</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 40px;
+      column-count: 2;
+      column-gap: 40px;
+      line-height: 1.8;
+    }
+    h1 {
+      column-span: all;
+      color: #333;
+    }
+    p {
+      margin: 0 0 15px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Two-Column Text Layout</h1>
+  <p>accented: café naïve São Paulo | currency: ₹1,500 €20 ¥300 $5 | emoji: 😀 🚀 ❤️ | hindi: नमस्ते दुनिया | chinese: 你好世界 | arabic: مرحبا بالعالم | math: ∑ ∫ √ ∞ ≠ ≤ | ligature words: office floor affluent | quotes: "smart" 'quotes' and – dashes</p>
+  <p>This paragraph demonstrates a two-column layout that flows across columns. The text includes accented characters like café and naïve, currency symbols like ₹ € ¥ $, and emoji like 😀 🚀 ❤️.</p>
+  <p>Non-Latin scripts include Hindi (नमस्ते दुनिया), Chinese (你好世界), and Arabic (مرحبا بالعالم).</p>
+  <p>Mathematical symbols: ∑ ∫ √ ∞ ≠ ≤ are used in scientific documents.</p>
+  <p>Ligature words like office, floor, and affluent show advanced typography.</p>
+  <p>Smart quotes "like this" and dashes – should render correctly in PDF output.</p>
+</body>
+</html>
