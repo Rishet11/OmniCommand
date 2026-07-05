@@ -116,6 +116,9 @@ export async function processVideo(inputFile: string, targetFormat: string, opti
         // Handle "extract audio" logically
         args.push('-vn'); // no video
         args.push('-acodec', format === 'mp3' ? 'libmp3lame' : format === 'aac' ? 'aac' : 'pcm_s16le');
+    } else if (format === 'webm') {
+        // WebM container requires VP8/VP9 video and Vorbis/Opus audio, not H.264/AAC
+        args.push('-c:v', 'libvpx-vp9', '-c:a', 'libopus');
     } else {
         // Assume standard video conversion
         args.push('-c:v', 'libx264', '-preset', 'fast');

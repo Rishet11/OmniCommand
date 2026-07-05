@@ -170,6 +170,15 @@ Example: `photo.png` with `omx compress photo.png to 50%` writes `photo_compress
 | `1` | Runtime error, dependency failure, corrupt file, or partial batch failure |
 | `2` | User input error such as bad syntax or missing arguments |
 
+## Known Limitations
+
+Local PDF text extraction reads the text layer embedded in the PDF. Some PDFs do not store enough information to recover everything:
+
+- Complex scripts (Hindi, Chinese, Arabic): printed PDFs often embed these glyphs without unicode mappings, so conjuncts or whole characters can be lost. Arabic can also come out in reversed visual order.
+- Scanned PDFs: image-only pages have no text layer to extract.
+
+The CLI prints a warning when it detects lost characters. Workaround: run with `--refine` to use AI vision extraction, which reads the rendered page instead of the text layer.
+
 ## MCP Server
 
 OmniCommand includes an optional MCP server for agentic integrations:

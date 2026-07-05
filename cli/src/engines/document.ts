@@ -28,7 +28,8 @@ function isLocalPdfTargetSupported(targetFormat: string) {
 export async function processDocument(inputFile: string, targetFormat: string, options: ProcessOptions) {
     const ext = path.extname(inputFile).toLowerCase();
     const normalizedTarget = normalizeDocumentFormat(targetFormat);
-    const outputPath = inputFile.replace(/\.[^/.]+$/, '') + `_${options.actionType || 'conv'}.` + normalizedTarget;
+    const parsed = path.parse(inputFile);
+    const outputPath = path.join(parsed.dir, parsed.name) + `_${options.actionType || 'conv'}.` + normalizedTarget;
 
     if (options.dryRun) {
         if (!options.quiet && !options.json) {
@@ -129,7 +130,7 @@ export async function processDocument(inputFile: string, targetFormat: string, o
             if (!isLocalPdfTargetSupported(normalizedTarget)) {
                 throw new Error(`Local PDF conversion to ${normalizedTarget} is not supported. Use --refine or choose md/txt.`);
             }
-            const text = await extractTextFromPdf(inputFile);
+            const text = await extractTextFromPdf(inputFile, options);
             fs.writeFileSync(outputPath, text);
         } catch (error: any) {
             throw new Error(`Local PDF Extraction failed: ${error.message}`);
@@ -138,6 +139,14 @@ export async function processDocument(inputFile: string, targetFormat: string, o
         // Standard Local Pandoc Execution for Word, PPT, etc.
         try {
             const pandocArgs = [inputFile, '-o', outputPath];
+            if (normalizedTarget === 'md' && (ext === '.docx' || ext === '.doc')) {
+                // Without --extract-media, pandoc's docx->md conversion still
+                // writes an image reference (e.g. media/rId9.png) into the
+                // markdown, but never actually extracts the embedded media -
+                // producing a dead link. Extract alongside the output file.
+                const mediaDir = path.join(parsed.dir, parsed.name) + '_media';
+                pandocArgs.push('--extract-media', mediaDir);
+            }
             if (normalizedTarget === 'pdf') {
                 pandocArgs.push(
                     '--pdf-engine=xelatex',
@@ -204,7 +213,23 @@ async function compressPdf(inputFile: string, outputPath: string, options: Proce
     return outputPath;
 }
 
-async function extractTextFromPdf(filepath: string): Promise<string> {
+// Presentation-form ligatures that some PDF fonts embed as single glyphs.
+// pdf.js extracts these as their own codepoint, which downstream tools
+// (spellcheck, search, markdown renderers) don't expect - expand them back
+// to their constituent letters.
+const LIGATURE_MAP: Record<string, string> = {
+    'ﬀ': 'ff',
+    'ﬁ': 'fi',
+    'ﬂ': 'fl',
+    'ﬃ': 'ffi',
+    'ﬄ': 'ffl',
+};
+
+function expandLigatures(text: string): string {
+    return text.replace(/[ﬀ-ﬄ]/g, (ch) => LIGATURE_MAP[ch] ?? ch);
+}
+
+async function extractTextFromPdf(filepath: string, options?: Pick<ProcessOptions, 'quiet' | 'json'>): Promise<string> {
     const data = new Uint8Array(fs.readFileSync(filepath));
     const doc = await getDocument({ data, useSystemFonts: true }).promise;
     let fullText = "";
@@ -212,8 +237,72 @@ async function extractTextFromPdf(filepath: string): Promise<string> {
     for (let i = 1; i <= doc.numPages; i++) {
         const page = await doc.getPage(i);
         const content = await page.getTextContent();
-        const strings = content.items.map((item) => 'str' in item ? item.str : '');
-        fullText += strings.join(" ") + "\n\n";
+
+        let pageText = "";
+        let prevEndX: number | null = null;
+        let prevEndY: number | null = null;
+
+        for (const item of content.items) {
+            if (!('str' in item)) continue;
+            const str = item.str;
+            const transform = 'transform' in item ? item.transform : null;
+            const x = transform ? transform[4] : null;
+            const y = transform ? transform[5] : null;
+            const width = 'width' in item ? item.width : 0;
+
+            if (prevEndX !== null && x !== null && y !== null) {
+                if (prevEndY !== null && Math.abs(y - prevEndY) > 2) {
+                    // New line: pdf.js emits explicit "" hasEOL markers too,
+                    // but this catches line breaks within the same item run.
+                    pageText += "\n";
+                } else if (x - prevEndX > 1) {
+                    // A real horizontal gap between glyph runs: treat as a
+                    // word/space boundary. Chrome-printed PDFs split words
+                    // into many small text items that abut exactly (no gap),
+                    // so joining unconditionally with " " previously inserted
+                    // a space between every glyph run, mangling words like
+                    // "café" and "São Paulo" into single letters.
+                    if (!pageText.endsWith(" ") && !str.startsWith(" ")) {
+                        pageText += " ";
+                    }
+                }
+            }
+
+            pageText += str;
+
+            if (str.length > 0 && x !== null && width) {
+                prevEndX = x + width;
+                prevEndY = y;
+            }
+
+            if ('hasEOL' in item && item.hasEOL) {
+                pageText += "\n";
+                prevEndX = null;
+                prevEndY = null;
+            }
+        }
+
+        fullText += pageText + "\n\n";
+    }
+
+    // NUL bytes mean the PDF font had no ToUnicode mapping for some glyphs
+    // (common with Hindi conjuncts / CJK / Arabic in printed PDFs). Detect
+    // before stripping so we can warn.
+    const hasLostGlyphs = fullText.includes(' ') || fullText.includes('�');
+    fullText = fullText.replace(/[ �]/g, '');
+
+    // Map Arabic contextual presentation forms back to base characters,
+    // then normalize to NFC and expand Latin ligatures.
+    fullText = fullText.replace(/[ﭐ-﷿ﹰ-﻿]/g, (ch) => ch.normalize('NFKC'));
+    fullText = expandLigatures(fullText.normalize('NFC'));
+
+    const charsPerPage = fullText.length / doc.numPages;
+    if ((hasLostGlyphs || charsPerPage < 20) && !options?.quiet && !options?.json) {
+        console.warn(chalk.yellow(
+            "\n⚠️ Warning: Some characters could not be extracted from this PDF\n" +
+            "  (missing font-to-unicode mappings, common with Hindi/Chinese/Arabic text).\n" +
+            "  Consider using --refine to let AI reconstruct the full content."
+        ));
     }
 
     return fullText;
